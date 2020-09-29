@@ -7,12 +7,15 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/miekg/dns"
 )
 
 // MimeType is the DoH mimetype that should be used.
 const MimeType = "application/dns-message"
+const JsonType = "application/dns-json"
 
 // Path is the URL path that should be used.
 const Path = "/dns-query"
@@ -83,15 +86,46 @@ func requestToMsgPost(req *http.Request) (*dns.Msg, error) {
 
 // requestToMsgGet extract the dns message from the GET request.
 func requestToMsgGet(req *http.Request) (*dns.Msg, error) {
-	values := req.URL.Query()
-	b64, ok := values["dns"]
-	if !ok {
-		return nil, fmt.Errorf("no 'dns' query parameter found")
+	if IsJsonRequest(req) {
+		values := req.URL.Query()
+		name, ok := values["name"]
+		if !ok {
+			return nil, fmt.Errorf("no 'name' query parameter found")
+		}
+		types, ok := values["type"]
+		if !ok {
+			return nil, fmt.Errorf("no 'type' query parameter found")
+		}
+		if len(types) > 1 {
+
+		}
+		rType := strings.ToUpper(types[0])
+		var qType uint16
+		if result, err := strconv.Atoi(rType); err == nil {
+			qType = uint16(result)
+		} else {
+			qType = dns.StringToType[rType]
+		}
+		m := new(dns.Msg)
+		m.Opcode = dns.OpcodeQuery
+		m.Question = append(m.Question, dns.Question{Name: name[0] + ".", Qtype: qType, Qclass: dns.ClassINET})
+
+		msg, err := m.Pack()
+		if err != nil {
+		}
+		return base64ToMsg(base64.RawURLEncoding.EncodeToString(msg))
+	} else {
+		values := req.URL.Query()
+		b64, ok := values["dns"]
+		if !ok {
+			return nil, fmt.Errorf("no 'dns' query parameter found")
+		}
+		if len(b64) != 1 {
+			return nil, fmt.Errorf("multiple 'dns' query values found")
+		}
+		return base64ToMsg(b64[0])
 	}
-	if len(b64) != 1 {
-		return nil, fmt.Errorf("multiple 'dns' query values found")
-	}
-	return base64ToMsg(b64[0])
+
 }
 
 func toMsg(r io.ReadCloser) (*dns.Msg, error) {
@@ -117,3 +151,34 @@ func base64ToMsg(b64 string) (*dns.Msg, error) {
 }
 
 var b64Enc = base64.RawURLEncoding
+
+type Question struct {
+	Name string `json:"name"`
+	Type uint16 `json:"type"`
+}
+
+type Answer struct {
+	Name string `json:"name"`
+	Type uint16 `json:"type"`
+	TTL  uint32 `json:"TTL"`
+	Data string `json:"data"`
+}
+
+type Response struct {
+	Status   int        `json:"Status"`
+	TC       bool       `json:"TC"`
+	RD       bool       `json:"RD"`
+	RA       bool       `json:"RA"`
+	AD       bool       `json:"AD"`
+	CD       bool       `json:"CD"`
+	Question []Question `json:"Question"`
+	Answer   []Answer   `json:"Answer"`
+}
+
+func IsJsonRequest(req *http.Request) bool {
+	acceptHeader := req.Header.Get("Accept")
+	if acceptHeader == JsonType {
+		return true
+	}
+	return false
+}

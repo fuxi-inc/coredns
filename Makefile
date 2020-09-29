@@ -81,3 +81,14 @@ pb:
 clean:
 	go clean
 	rm -f coredns
+
+.PHONY: refresh
+refresh:
+	git fetch upstream
+	git fetch merge upstream/master
+	git pull upstream master
+	go mod download
+
+.PHONY: run
+run:
+	go run coredns.go -conf deployment/dev/Corefile

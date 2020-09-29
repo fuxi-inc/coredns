@@ -1,0 +1,8 @@
+.:1053 tls://.:1953 https://.:1443 {
+  bind 127.0.0.1 ::1
+  tls deployment/dev/dns.heze+4.pem deployment/dev/dns.heze+4-key.pem
+  forward . 8.8.8.8
+  any
+  errors
+  log
+}

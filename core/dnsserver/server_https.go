@@ -3,10 +3,12 @@ package dnsserver
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/coredns/caddy"
@@ -142,12 +144,42 @@ func (s *ServerHTTPS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	mt, _ := response.Typify(dw.Msg, time.Now().UTC())
 	age := dnsutil.MinimalTTL(dw.Msg, mt)
 
-	w.Header().Set("Content-Type", doh.MimeType)
-	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%f", age.Seconds()))
-	w.Header().Set("Content-Length", strconv.Itoa(len(buf)))
-	w.WriteHeader(http.StatusOK)
+	if doh.IsJsonRequest(r) {
+		resp := doh.Response{Status: dw.Msg.Rcode}
 
-	w.Write(buf)
+		resp.TC = dw.Msg.Truncated
+		resp.RD = dw.Msg.RecursionDesired
+		resp.RA = dw.Msg.RecursionAvailable
+		resp.AD = dw.Msg.AuthenticatedData
+		resp.CD = dw.Msg.CheckingDisabled
+		for _, q := range dw.Msg.Question {
+			resp.Question = append(resp.Question, doh.Question{Name: q.Name, Type: q.Qtype})
+		}
+		for _, rr := range dw.Msg.Answer {
+			content := rr.String()
+			header := rr.Header().String()
+			data := strings.TrimPrefix(content, header)
+			resp.Answer = append(resp.Answer, doh.Answer{Name: rr.Header().Name, Type: rr.Header().Rrtype, TTL: rr.Header().Ttl, Data: data})
+		}
+		w.Header().Set("Content-Type", doh.JsonType)
+		data, err := json.Marshal(resp)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%f", age.Seconds()))
+			w.Header().Set("Content-Length", strconv.Itoa(len(data)))
+			w.Write(data)
+		}
+	} else {
+		w.Header().Set("Content-Type", doh.MimeType)
+		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%f", age.Seconds()))
+		w.Header().Set("Content-Length", strconv.Itoa(len(buf)))
+		w.WriteHeader(http.StatusOK)
+
+		w.Write(buf)
+	}
+
 }
 
 // Shutdown stops the server (non gracefully).
