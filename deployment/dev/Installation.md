@@ -6,7 +6,7 @@ brew install mkcert
 mkcert -install
 
 ### Create new certificate
-mkcert dns.heze "*.heze" localhost 127.0.0.1 ::1
+mkcert dns.heze "*.heze" localhost 192.168.10.51 192.168.10.252 127.0.0.1 ::1
 
 ## Appendix
 
