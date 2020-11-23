@@ -1,15 +1,9 @@
 .:1053 tls://.:1953 https://.:1443 {
-  bind 127.0.0.1 ::1 192.168.10.81
+  bind 127.0.0.1 ::1 192.168.10.220
   tls deployment/dev/dns.heze+6.pem deployment/dev/dns.heze+6-key.pem
-
-  blockchain {
-      connection /uid
-      fabricNameServers ns1.fabric.xyz ns2.fabric.xyz
-      ipfsgatewaya 176.9.154.81
-      ipfsgatewayaaaa 2a01:4f8:160:4069::2
-  }
 
   forward . 8.8.8.8
   errors
   log
 }
+

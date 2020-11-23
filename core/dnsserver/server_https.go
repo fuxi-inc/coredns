@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/miekg/dns"
 	"net"
 	"net/http"
 	"strconv"
@@ -145,22 +146,37 @@ func (s *ServerHTTPS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	age := dnsutil.MinimalTTL(dw.Msg, mt)
 
 	if doh.IsJsonRequest(r) {
-		resp := doh.Response{Status: dw.Msg.Rcode}
+		resp := doh.Response{Status: dns.RcodeToString[dw.Msg.Rcode], TC: dw.Msg.Truncated, RD: dw.Msg.RecursionDesired, RA: dw.Msg.RecursionAvailable, AD: dw.Msg.AuthenticatedData, CD: dw.Msg.CheckingDisabled}
 
-		resp.TC = dw.Msg.Truncated
-		resp.RD = dw.Msg.RecursionDesired
-		resp.RA = dw.Msg.RecursionAvailable
-		resp.AD = dw.Msg.AuthenticatedData
-		resp.CD = dw.Msg.CheckingDisabled
 		for _, q := range dw.Msg.Question {
-			resp.Question = append(resp.Question, doh.Question{Name: q.Name, Type: q.Qtype})
+			resp.Question = append(resp.Question, doh.Question{Name: q.Name, Type: dns.TypeToString[q.Qtype]})
 		}
 		for _, rr := range dw.Msg.Answer {
 			content := rr.String()
 			header := rr.Header().String()
 			data := strings.TrimPrefix(content, header)
-			resp.Answer = append(resp.Answer, doh.Answer{Name: rr.Header().Name, Type: rr.Header().Rrtype, TTL: rr.Header().Ttl, Data: data})
+			resp.Answer = append(resp.Answer, doh.RR{Name: rr.Header().Name, Type: dns.TypeToString[rr.Header().Rrtype], TTL: rr.Header().Ttl, Data: data})
 		}
+
+		for _, rr := range dw.Msg.Ns {
+			content := rr.String()
+			header := rr.Header().String()
+			data := strings.TrimPrefix(content, header)
+			resp.Authority = append(resp.Authority, doh.RR{Name: rr.Header().Name, Type: dns.TypeToString[rr.Header().Rrtype], TTL: rr.Header().Ttl, Data: data})
+		}
+
+		for _, rr := range dw.Msg.Extra {
+			content := rr.String()
+			header := rr.Header().String()
+			data := strings.TrimPrefix(content, header)
+			if rr.Header().Rrtype == dns.TypeOPT {
+				opt := rr.(*dns.OPT)
+				data, _ = doh.OPTtoString(opt)
+				data = strings.Replace(data, "\"", "", -1)
+			}
+			resp.Additional = append(resp.Additional, doh.RR{Name: rr.Header().Name, Type: dns.TypeToString[rr.Header().Rrtype], TTL: rr.Header().Ttl, Data: data})
+		}
+
 		w.Header().Set("Content-Type", doh.JsonType)
 		data, err := json.Marshal(resp)
 		if err != nil {
