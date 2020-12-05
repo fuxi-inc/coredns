@@ -95,6 +95,7 @@ func requestToMsgGet(req *http.Request) (*dns.Msg, error) {
 		if !ok {
 			return nil, fmt.Errorf("no 'name' query parameter found")
 		}
+
 		if !validateDomainName(name[0]) {
 			return nil, fmt.Errorf("'name' is an invalid domain name")
 		}
@@ -109,8 +110,13 @@ func requestToMsgGet(req *http.Request) (*dns.Msg, error) {
 		var qType uint16
 		if result, err := strconv.Atoi(rType); err == nil {
 			qType = uint16(result)
+			if _, ok = dns.TypeToString[qType]; !ok {
+				return nil, fmt.Errorf("invalid type %q", rType)
+			}
 		} else {
-			qType = dns.StringToType[rType]
+			if qType, ok = dns.StringToType[strings.ToUpper(rType)]; !ok {
+				return nil, fmt.Errorf("invalid type %q", rType)
+			}
 		}
 
 		cds, ok := values["cd"]
@@ -297,7 +303,6 @@ func IsJsonRequest(req *http.Request) bool {
 }
 
 func validateDomainName(domain string) bool {
-	RegExp := regexp.MustCompile(`^(([a-zA-Z]{1})|([a-zA-Z]{1}[a-zA-Z]{1})|([a-zA-Z]{1}[0-9]{1})|([0-9]{1}[a-zA-Z]{1})|([a-zA-Z0-9][a-zA-Z0-9-_]{1,61}[a-zA-Z0-9]))\.([a-zA-Z]{2,6}|[a-zA-Z0-9-]{2,30}\.[a-zA-Z
-]{2,3})$`)
+	RegExp := regexp.MustCompile(`[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+.?`)
 	return RegExp.MatchString(domain)
 }

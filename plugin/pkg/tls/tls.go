@@ -116,10 +116,10 @@ func NewHTTPSTransport(cc *tls.Config) *http.Transport {
 	tr := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		Dial: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
+			Timeout:   60 * time.Second,
+			KeepAlive: 60 * time.Second,
 		}).Dial,
-		TLSHandshakeTimeout: 10 * time.Second,
+		TLSHandshakeTimeout: 60 * time.Second,
 		TLSClientConfig:     cc,
 		MaxIdleConnsPerHost: 25,
 	}

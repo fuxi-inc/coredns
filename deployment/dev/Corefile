@@ -1,9 +1,9 @@
-.:1053 tls://.:1953 https://.:1443 {
-  bind 127.0.0.1 ::1 192.168.10.220
+.:1153 tls://.:1953 https://.:1443 {
+  bind 127.0.0.1 ::1 192.168.43.93
   tls deployment/dev/dns.heze+6.pem deployment/dev/dns.heze+6-key.pem
 
-  forward . 8.8.8.8
+  forward . 127.0.0.1:1053
+  cache
   errors
   log
 }
-
