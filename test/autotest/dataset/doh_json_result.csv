@@ -1,0 +1,13 @@
+no 'name' query parameter found
+dns: domain name exceeded 255 wire-format octets
+dns: overflow unpacking uint16
+{"Status":"NOERROR","TC":false,"RD":false,"RA":false,"AD":false,"CD":false,"Question":[{"name":"ly.a1.test.heze.","type":"A"}],"Answer":[{"name":"ly.a1.test.heze.","type":"A","TTL":60,"data":"192.168.10.82"}],"Authority":[{"name":"test.heze.","type":"NS","TTL":60,"data":"ns1.admin.heze."},{"name":"test.heze.","type":"NS","TTL":60,"data":"ns2.admin.heze."}],"Additional":[{"name":".","type":"OPT","TTL":32768,"data":"{flags:do,udp:2048,version:0}"}]}
+{"Status":"NOERROR","TC":false,"RD":false,"RA":false,"AD":false,"CD":false,"Question":[{"name":"ly.a4.test.heze.","type":"AAAA"}],"Answer":[{"name":"ly.a4.test.heze.","type":"AAAA","TTL":60,"data":"2a01:7e00::f03c:91ff:fef1:6735"}],"Authority":[{"name":"test.heze.","type":"NS","TTL":60,"data":"ns1.admin.heze."},{"name":"test.heze.","type":"NS","TTL":60,"data":"ns2.admin.heze."}],"Additional":[{"name":".","type":"OPT","TTL":32768,"data":"{flags:do,udp:2048,version:0}"}]}
+invalid type "AA"
+{"Status":"NOERROR","TC":false,"RD":false,"RA":false,"AD":false,"CD":false,"Question":[{"name":"ly.a4.test.heze.","type":"AAAA"}],"Answer":[{"name":"ly.a4.test.heze.","type":"AAAA","TTL":60,"data":"2a01:7e00::f03c:91ff:fef1:6735"}],"Authority":[{"name":"test.heze.","type":"NS","TTL":60,"data":"ns1.admin.heze."},{"name":"test.heze.","type":"NS","TTL":60,"data":"ns2.admin.heze."}],"Additional":[{"name":".","type":"OPT","TTL":32768,"data":"{flags:do,udp:2048,version:0}"}]}
+invalid type "2666"
+{"Status":"NXDOMAIN","TC":false,"RD":false,"RA":false,"AD":false,"CD":false,"Question":[{"name":"ly.r11.test.heze.","type":"A"}],"Answer":null,"Authority":[{"name":"test.heze.","type":"SOA","TTL":864,"data":"ns1.admin.heze. admin.id.heze. 20201203 14400 3600 604800 14400"}],"Additional":[{"name":".","type":"OPT","TTL":32768,"data":"{flags:do,udp:2048,version:0}"}]}
+no 'dns' query parameter found
+
+
+

@@ -1,0 +1,94 @@
+NOERROR
+ly.a1.test.heze. 60 IN A 192.168.10.82
+test.heze. 1800 IN NS ns1.admin.heze.;test.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.a2.test.heze. 60 IN A 192.168.10.82
+test.heze. 1800 IN NS ns1.admin.heze.;test.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.a3.test.heze. 60 IN A 192.168.10.82
+test.heze. 1800 IN NS ns1.admin.heze.;test.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.a4.test.heze. 60 IN AAAA 2a01:7e00::f03c:91ff:fef1:6735
+test.heze. 1800 IN NS ns1.admin.heze.;test.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.a5.test.heze. 60 IN TXT "just try"
+test.heze. 1800 IN NS ns1.admin.heze.;test.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.a6.test.heze. 60 IN URI 0 0 "https://lying.io"
+test.heze. 1800 IN NS ns1.admin.heze.;test.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+rms.heze. 1800 IN NS ns1.admin.heze.;rms.heze. 1800 IN NS ns2.admin.heze.
+
+
+NOERROR
+ly.a8.rms.heze. 60 IN CNAME cname8.rms.heze.
+rms.heze. 1800 IN NS ns1.admin.heze.;rms.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+rms.heze. 1800 IN SOA ns1.admin.heze. admin.id.heze. 20201201 14400 3600 604800 14400
+rms.heze. 1800 IN NS ns1.admin.heze.;rms.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.a10.rms.heze. 60 IN A 192.168.10.82
+rms.heze. 1800 IN NS ns1.admin.heze.;rms.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.a11.rms.heze. 60 IN CNAME cname11.rms.heze.;cname11.rms.heze. 60 IN A 192.168.10.81
+rms.heze. 1800 IN NS ns1.admin.heze.;rms.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+external.rms.heze. 60 IN CNAME cname.test.heze.;cname.test.heze. 60 IN A 192.168.10.81
+rms.heze. 1800 IN NS ns1.admin.heze.;rms.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.a13.rms.heze. 60 IN CNAME cname13.rms.heze.;cname13.rms.heze. 60 IN CNAME cname_cname13.rms.heze.;cname_cname13.rms.heze. 60 IN A 192.168.10.81
+rms.heze. 1800 IN NS ns1.admin.heze.;rms.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.a14.rms.heze. 60 IN CNAME cname14.rms.heze.
+rms.heze. 1800 IN NS ns1.admin.heze.;rms.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.a15.rms.heze. 60 IN A 192.168.10.82
+rms.heze. 1800 IN NS ns1.admin.heze.;rms.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.a16.rms.heze. 60 IN A 192.168.10.81
+rms.heze. 1800 IN NS ns1.admin.heze.;rms.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.a17.rms.heze. 60 IN A 192.168.10.82
+rms.heze. 1800 IN NS ns1.admin.heze.;rms.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.a18.rms.heze. 60 IN A 192.168.10.82
+rms.heze. 1800 IN NS ns1.admin.heze.;rms.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.a19.rms.heze. 60 IN CNAME cname19.rms.heze.;cname19.rms.heze. 60 IN A 192.168.10.81
+rms.heze. 1800 IN NS ns1.admin.heze.;rms.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.external.rms.heze. 60 IN CNAME cname.test.heze.;cname.test.heze. 60 IN A 192.168.10.81
+rms.heze. 1800 IN NS ns1.admin.heze.;rms.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.a21.rms.heze. 60 IN CNAME cname21.rms.heze.;cname21.rms.heze. 60 IN CNAME cname_cname21.rms.heze.;cname_cname21.rms.heze. 60 IN A 192.168.10.81
+rms.heze. 1800 IN NS ns1.admin.heze.;rms.heze. 1800 IN NS ns2.admin.heze.
+
+NOERROR
+ly.a22.rms.heze. 60 IN CNAME cname22.rms.heze.
+rms.heze. 1800 IN NS ns1.admin.heze.;rms.heze. 1800 IN NS ns2.admin.heze.
+
+NXDOMAIN
+test.heze. 1800 IN SOA ns1.admin.heze. admin.id.heze. 20201202 14400 3600 604800 14400
+REFUSED
+NOERROR
+
+rms.heze. 1800 IN SOA ns1.admin.heze. admin.id.heze. 20201202 14400 3600 604800 14400
