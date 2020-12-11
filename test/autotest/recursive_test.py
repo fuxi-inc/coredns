@@ -6,7 +6,7 @@ from dns import message, query, resolver
 import requests
 import json
 
-SERVER_ADDR = "192.168.43.93"
+SERVER_ADDR = "106.15.62.126"
 BASIC_PORT = 1153
 DOH_PORT = 1443
 
