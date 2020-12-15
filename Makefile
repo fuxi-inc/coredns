@@ -97,5 +97,5 @@ refresh:
 
 .PHONY: run
 run:
-	nohup go run coredns.go -conf $(APP_PROFILE)/Corefile >> /tmp/coredns.log 2>&1 &
+	nohup go run coredns.go -conf deployment/$(APP_PROFILE)/Corefile >> /tmp/coredns.log 2>&1 &
     @echo "coredns started."
