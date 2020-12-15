@@ -1,0 +1,9 @@
+.:53 tls://.:1953 https://.:1443 {
+  bind 0.0.0.0 ::1
+  tls deployment/qa/dns.heze+6.pem deployment/qa/dns.heze+6-key.pem
+
+  forward . ns1.rms.fxn.qa:1053
+  cache
+  errors
+  log
+}

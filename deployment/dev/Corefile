@@ -2,7 +2,7 @@
   bind 0.0.0.0 ::1
   tls deployment/dev/dns.heze+6.pem deployment/dev/dns.heze+6-key.pem
 
-  forward . 106.15.62.126:1053
+  forward . 10.210.146.194:1053
   cache
   errors
   log
