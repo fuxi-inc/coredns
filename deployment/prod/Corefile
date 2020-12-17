@@ -1,6 +1,6 @@
 .:1153 tls://.:1953 https://.:1443 {
   bind 0.0.0.0 ::1
-  tls deployment/dev/doh.qa.fxn.tech.pem deployment/dev/doh.qa.fxn.tech.key
+  tls deployment/prod/doh.qa.fxn.tech.pem deployment/prod/doh.qa.fxn.tech.key
 
   forward . 8.8.8.8
 
@@ -11,7 +11,7 @@
 
 heze:1153 tls://heze:1953 https://heze:1443 {
   bind 0.0.0.0 ::1
-  tls deployment/dev/doh.qa.fxn.tech.pem deployment/dev/doh.qa.fxn.tech.key
+  tls deployment/prod/doh.qa.fxn.tech.pem deployment/prod/doh.qa.fxn.tech.key
 
   forward . 172.20.64.84:1053 172.20.64.83:1053
 
