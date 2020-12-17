@@ -18,7 +18,7 @@ import (
 
 // MimeType is the DoH mimetype that should be used.
 const MimeType = "application/dns-message"
-const JsonType = "application/dns-json"
+const JsonType = "text/html"
 
 // Path is the URL path that should be used.
 const DoHPath = "/dns-query"
