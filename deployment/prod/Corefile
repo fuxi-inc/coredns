@@ -1,8 +1,20 @@
-.:53 tls://.:1953 https://.:1443 {
+.:1153 tls://.:1953 https://.:1443 {
   bind 0.0.0.0 ::1
-  tls deployment/prod/dns.heze+6.pem deployment/prod/dns.heze+6-key.pem
+  tls deployment/dev/dns.heze+6.pem deployment/dev/dns.heze+6-key.pem
 
-  forward . 172.20.64.83:1053
+  forward . 8.8.8.8
+
+  cache
+  errors
+  log
+}
+
+heze:1153 tls://heze:1953 https://heze:1443 {
+  bind 0.0.0.0 ::1
+  tls deployment/dev/dns.heze+6.pem deployment/dev/dns.heze+6-key.pem
+
+  forward . 8.133.162.203:1053 106.15.232.63:1053
+
   cache
   errors
   log
