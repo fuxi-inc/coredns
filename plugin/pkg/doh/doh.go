@@ -21,7 +21,8 @@ const MimeType = "application/dns-message"
 const JsonType = "application/dns-json"
 
 // Path is the URL path that should be used.
-const Path = "/dns-query"
+const DoHPath = "/dns-query"
+const JsonPath = "/resolve"
 
 // NewRequest returns a new DoH request given a method, URL (without any paths, so exclude /dns-query) and dns.Msg.
 func NewRequest(method, url string, m *dns.Msg) (*http.Request, error) {
@@ -34,7 +35,7 @@ func NewRequest(method, url string, m *dns.Msg) (*http.Request, error) {
 	case http.MethodGet:
 		b64 := base64.RawURLEncoding.EncodeToString(buf)
 
-		req, err := http.NewRequest(http.MethodGet, "https://"+url+Path+"?dns="+b64, nil)
+		req, err := http.NewRequest(http.MethodGet, "https://"+url+DoHPath+"?dns="+b64, nil)
 		if err != nil {
 			return req, err
 		}
@@ -44,7 +45,7 @@ func NewRequest(method, url string, m *dns.Msg) (*http.Request, error) {
 		return req, nil
 
 	case http.MethodPost:
-		req, err := http.NewRequest(http.MethodPost, "https://"+url+Path+"?bla=foo:443", bytes.NewReader(buf))
+		req, err := http.NewRequest(http.MethodPost, "https://"+url+DoHPath+"?bla=foo:443", bytes.NewReader(buf))
 		if err != nil {
 			return req, err
 		}
@@ -294,9 +295,7 @@ type Response struct {
 }
 
 func IsJsonRequest(req *http.Request) bool {
-	acceptHeader := req.Header.Get("Accept")
-	fmt.Printf("AcceptHeader:%s\n", acceptHeader)
-	if acceptHeader == JsonType {
+	if req.URL.Path == JsonPath {
 		return true
 	}
 	return false

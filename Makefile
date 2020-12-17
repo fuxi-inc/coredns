@@ -9,7 +9,7 @@ MAKEPWD:=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 CGO_ENABLED:=0
 
 .ONESHELL:
-APP_PROFILE ?= "dev"
+APP_PROFILE ?= dev
 ifdef $$APP_PROFILE
 APP_PROFILE := $$APP_PROFILE
 endif
@@ -98,4 +98,4 @@ refresh:
 .PHONY: run
 run:
 	nohup go run coredns.go -conf deployment/$(APP_PROFILE)/Corefile >> /tmp/coredns.log 2>&1 &
-    @echo "coredns started."
+	@echo "coredns started."

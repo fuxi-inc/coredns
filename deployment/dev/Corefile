@@ -2,7 +2,19 @@
   bind 0.0.0.0 ::1
   tls deployment/dev/dns.heze+6.pem deployment/dev/dns.heze+6-key.pem
 
-  forward . 10.210.146.194:1053
+  forward . 8.8.8.8
+
+  cache
+  errors
+  log
+}
+
+heze:1153 tls://heze:1953 https://heze:1443 {
+  bind 0.0.0.0 ::1
+  tls deployment/dev/dns.heze+6.pem deployment/dev/dns.heze+6-key.pem
+
+  forward . 8.133.162.203:1053
+
   cache
   errors
   log

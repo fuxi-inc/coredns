@@ -1,8 +1,8 @@
-.:53 tls://.:1953 https://.:1443 {
+.:1153 tls://.:1953 https://.:1443 {
   bind 0.0.0.0 ::1
-  tls deployment/qa/dns.heze+6.pem deployment/qa/dns.heze+6-key.pem
+  tls deployment/qa/doh.qa.fxn.tech.pem deployment/qa/doh.qa.fxn.tech.key
 
-  forward . 172.20.64.83:1053
+  forward .heze 106.15.232.63:1053 8.133.162.203:1053
   cache
   errors
   log

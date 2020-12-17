@@ -111,7 +111,7 @@ func (s *ServerHTTPS) Stop() error {
 // chain, converts it back and write it to the client.
 func (s *ServerHTTPS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
-	if r.URL.Path != doh.Path {
+	if r.URL.Path != doh.DoHPath && r.URL.Path != doh.JsonPath {
 		http.Error(w, "", http.StatusNotFound)
 		return
 	}
