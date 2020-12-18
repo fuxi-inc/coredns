@@ -9,7 +9,7 @@
   log
 }
 
-heze:1153 tls://heze:1953 https://heze:1443 {
+fuxi:1153 tls://fuxi:1953 https://fuxi:1443 {
   bind 0.0.0.0
   tls /coredns/deployment/dev/dns.heze+6.pem /coredns/deployment/dev/dns.heze+6-key.pem
 
