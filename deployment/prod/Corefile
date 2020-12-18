@@ -1,6 +1,6 @@
 .:1153 tls://.:1953 https://.:1443 {
   bind 0.0.0.0
-  tls /coredns/deployment/prod/doh1.qa.fxn.tech.pem /coredns/deployment/prod/doh1.qa.fxn.tech.key
+  tls /coredns/deployment/prod/doh.qa.fxn.tech.pem /coredns/deployment/prod/doh.qa.fxn.tech.key
 
   forward . 8.8.8.8
 
@@ -11,7 +11,7 @@
 
 fuxi:1153 tls://fuxi:1953 https://fuxi:1443 {
   bind 0.0.0.0
-  tls /coredns/deployment/prod/doh1.qa.fxn.tech.pem /coredns/deployment/prod/doh1.qa.fxn.tech.key
+  tls /coredns/deployment/prod/doh.qa.fxn.tech.pem /coredns/deployment/prod/doh.qa.fxn.tech.key
 
   forward . 172.20.64.84:1053 172.20.64.83:1053
 
