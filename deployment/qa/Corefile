@@ -1,6 +1,6 @@
 .:1153 tls://.:1953 https://.:1443 {
-  bind 0.0.0.0 ::1
-  tls deployment/qa/doh1.qa.fxn.tech.pem deployment/qa/doh1.qa.fxn.tech.key
+  bind 0.0.0.0
+  tls /coredns/deployment/qa/doh1.qa.fxn.tech.pem /coredns/deployment/qa/doh1.qa.fxn.tech.key
 
   forward . 8.8.8.8
 
@@ -10,8 +10,8 @@
 }
 
 heze:1153 tls://heze:1953 https://heze:1443 {
-  bind 0.0.0.0 ::1
-  tls deployment/qa/doh1.qa.fxn.tech.pem deployment/qa/doh1.qa.fxn.tech.key
+  bind 0.0.0.0
+  tls /coredns/deployment/qa/doh1.qa.fxn.tech.pem /coredns/deployment/qa/doh1.qa.fxn.tech.key
 
   forward . 172.20.64.84:1053 172.20.64.83:1053
 

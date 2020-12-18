@@ -95,6 +95,18 @@ refresh:
 	git pull upstream master
 	go mod download
 
+start:
+	@sudo docker run --name coredns -p 1153:1153/udp -p 1153:1153/tcp -p 1443:1443 -p 1953:1953 -d coredns:latest -conf /coredns/deployment/$(APP_PROFILE)/Corefile
+	@echo "coredns started..."
+
+stop:
+	@docker stop coredns
+	@docker rm -f coredns
+	@echo "coredns stopped..."
+
+status:
+	@docker ps -a
+
 .PHONY: run
 run:
 	nohup go run coredns.go -conf deployment/$(APP_PROFILE)/Corefile >> /tmp/coredns.log 2>&1 &
