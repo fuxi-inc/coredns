@@ -2,7 +2,18 @@ heze:53 tls://heze:1953 https://heze:443 {
   bind 0.0.0.0
   tls /coredns/deployment/prod/doh.fxn.tech.pem /coredns/deployment/prod/doh.fxn.tech.key
 
-  forward . 172.19.6.144:1053
+  forward . 172.19.6.144:53
+
+  cache
+  errors
+  log
+}
+
+test:53 tls://test:1953 https://test:443 {
+  bind 0.0.0.0
+  tls /coredns/deployment/prod/doh.fxn.tech.pem /coredns/deployment/prod/doh.fxn.tech.key
+
+  forward . 172.19.6.144:53
 
   cache
   errors
