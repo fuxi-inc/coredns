@@ -101,7 +101,7 @@ refresh:
 	go mod download
 
 start:
-	@sudo docker run --name coredns -p 1153:1153/udp -p 1153:1153/tcp -p 1443:1443 -p 1953:1953 -d hub.fxn.tech/coredns:$(APP_VERSION) -conf /coredns/deployment/$(APP_PROFILE)/Corefile
+	@docker run --name coredns -p 1153:1153/udp -p 1153:1153/tcp -p 1443:1443 -p 1953:1953 -d hub.fxn.tech/coredns:$(APP_VERSION) -conf /coredns/deployment/$(APP_PROFILE)/Corefile
 	@echo "coredns started..."
 
 stop:
