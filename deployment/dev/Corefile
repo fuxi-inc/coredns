@@ -1,6 +1,6 @@
 .:1153 tls://.:1953 https://.:1443 {
   bind 0.0.0.0
-  tls /coredns/deployment/dev/dns.heze+6.pem /coredns/deployment/dev/dns.heze+6-key.pem
+  tls deployment/dev/dns.heze+6.pem deployment/dev/dns.heze+6-key.pem
 
   warnlist {
     url http://125.254.168.52:10528/v1 json
@@ -17,7 +17,7 @@
 
 fuxi:1153 tls://fuxi:1953 https://fuxi:1443 {
   bind 0.0.0.0
-  tls /coredns/deployment/dev/dns.heze+6.pem /coredns/deployment/dev/dns.heze+6-key.pem
+  tls deployment/dev/dns.heze+6.pem deployment/dev/dns.heze+6-key.pem
 
   forward . 8.133.162.203:1053 106.15.232.63:1053
 

@@ -114,7 +114,7 @@ status:
 
 .PHONY: run
 run:
-	nohup go run coredns.go -conf deployment/$(APP_PROFILE)/Corefile >> /tmp/coredns.log 2>&1 &
+	nohup go run coredns.go -conf deployment/$(APP_PROFILE)/Corefile >> coredns.log 2>&1 &
 	@echo "coredns started."
 	@echo "* * * * * ${MAKEPWD}coredns-log-split.sh" > /var/spool/cron/crontabs/root
 	service cron restart
