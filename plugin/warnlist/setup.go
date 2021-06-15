@@ -37,8 +37,8 @@ func setup(c *caddy.Controller) error {
 	}
 
 	// Build the cache for the warnlist
-	warnlist, err := buildCacheFromFile(options)
-	//warnlist, err := buildDBFromFile(options)
+	//warnlist, err := buildCacheFromFile(options)
+	warnlist, err := buildDBFromFile(options)
 
 	reloadTime := time.Now()
 	if err != nil {

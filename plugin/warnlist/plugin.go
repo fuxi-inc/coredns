@@ -39,8 +39,8 @@ func (wp *WarnlistPlugin) ServeDNS(ctx context.Context, w dns.ResponseWriter, r 
 	qtype := req.QType()
 	answers := []dns.RR{}
 
-	log.Infof("qname:", qname)
-	log.Infof("qtype:", qtype)
+	//log.Infof("qname:", qname)
+	//log.Infof("qtype:", qtype)
 
 	// Update the server name from context if it has changed
 	if metrics.WithServer(ctx) != wp.serverName {
@@ -88,7 +88,7 @@ func (wp *WarnlistPlugin) ServeDNS(ctx context.Context, w dns.ResponseWriter, r 
 		if hit {
 			// Warn and increment the counter for the hit
 			warnlistCount.WithLabelValues(metrics.WithServer(ctx), req.IP(), req.Name()).Inc()
-			log.Warning("host ", req.IP(), " requested warnlisted domain: ", req.Name())
+			log.Infof("host ", req.IP(), " requested warnlisted domain: ", req.Name())
 
 			m := new(dns.Msg)
 			m.SetReply(r)
@@ -99,7 +99,7 @@ func (wp *WarnlistPlugin) ServeDNS(ctx context.Context, w dns.ResponseWriter, r 
 		}
 
 	} else {
-		log.Warning("no warnlist has been loaded")
+		log.Infof("no warnlist has been loaded")
 		// Update the current warnlist size metric to 0
 		warnlistSize.WithLabelValues(metrics.WithServer(ctx)).Set(float64(0))
 	}

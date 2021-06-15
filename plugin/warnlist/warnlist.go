@@ -2,10 +2,14 @@ package warnlist
 
 import (
 	"fmt"
+	"github.com/miekg/dns"
 	"net"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"database/sql"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var redirectIP = "127.0.0.1"
@@ -33,7 +37,7 @@ func newMap() *Map {
 type Warnlist interface {
 	Add(rr string)
 	Contains(key string) bool
-	lookupStaticHost(list map[string][]net.IP, host string) []net.IP
+	lookupStaticHost(host string, qtype uint16) []net.IP
 	LookupStaticAddr(addr string) []string
 	LookupStaticHostV4(host string) []net.IP
 	LookupStaticHostV6(host string) []net.IP
@@ -44,6 +48,12 @@ type Warnlist interface {
 
 func NewWarnlist() Warnlist {
 	b := &GoMapWarnlist{}
+	b.Open()
+	return b
+}
+
+func NewWarnlistFile() Warnlist {
+	b := &NewWarnlistDB{}
 	b.Open()
 	return b
 }
@@ -93,6 +103,170 @@ func NewWarnlist() Warnlist {
 //	r.warnlist = tree
 //}
 //
+
+type NewWarnlistDB struct {
+	db *sql.DB
+}
+
+func (d *NewWarnlistDB) Add(rr string) {
+	items := strings.Split(rr, " ")
+	rows, err := d.db.Query("SELECT count(*) FROM abnormal_domain_all where abnormal_domain=? and IP = ?", items[1], items[0])
+	if err != nil {
+		log.Errorf("query error: %v#", err)
+	}
+
+	var count int
+	for rows.Next() {
+		err = rows.Scan(&count)
+		if err != nil {
+			log.Errorf("query error: %v#", err)
+		}
+	}
+	if count > 0 {
+		stmt, err := d.db.Prepare("UPDATE abnormal_domain_all SET redirectIP=?")
+		if err != nil {
+			log.Errorf("prepare sql error: %v#", err)
+		}
+		_, err = stmt.Exec(redirectIP)
+		if err != nil {
+			log.Errorf("update error: %v#", err)
+		}
+	} else {
+		stmt, err := d.db.Prepare("INSERT INTO abnormal_domain_all(abnormal_domain, IP, qtype, redirectIP)  values(?, ?, ?, ?)")
+		if err != nil {
+			log.Errorf("prepare sql error: %v#", err)
+		}
+
+		var queryType uint16
+		if items[0] != "" {
+			if parseIP(items[0]).To4() != nil {
+				queryType = dns.TypeA
+			} else {
+				queryType = dns.TypeA
+			}
+		}
+		_, err = stmt.Exec(items[1], items[0], queryType, redirectIP)
+		if err != nil {
+			log.Errorf("insertd error: %v#", err)
+		}
+	}
+
+}
+
+func (d *NewWarnlistDB) Contains(key string) bool {
+	rows, err := d.db.Query("SELECT count(*) FROM abnormal_domain_all where abnormal_domain=?", key)
+	if err != nil {
+		log.Errorf("query error: %v#", err)
+	}
+
+	var count int
+	for rows.Next() {
+		err = rows.Scan(&count)
+		if err != nil {
+			log.Errorf("query error: %v#", err)
+		}
+	}
+	return count > 0
+}
+
+func (d *NewWarnlistDB) Close() error {
+	// Nothing to do to close a map
+	return d.db.Close()
+}
+
+func (d *NewWarnlistDB) Len() int {
+	rows, err := d.db.Query("SELECT count(*) FROM abnormal_domain_all")
+	if err != nil {
+		log.Errorf("query length error: %v#", err)
+	}
+	var count int
+	for rows.Next() {
+		err = rows.Scan(&count)
+		if err != nil {
+			log.Errorf("query length error: %v#", err)
+		}
+	}
+	return count
+}
+
+func (d *NewWarnlistDB) Open() {
+	database, err := sql.Open("sqlite3", "./blacklists.db")
+	d.db = database
+	table := `
+    CREATE TABLE IF NOT EXISTS abnormal_domain_all (
+    	id INTEGER PRIMARY KEY AUTOINCREMENT,
+    	abnormal_domain VARCHAR(256) NOT NULL,
+        IP VARCHAR(256) NULL,
+        qtype SMALLINT unsigned NULL,
+        redirectIP varchar(256) DEFAULT('127.0.0.1')
+    );
+    `
+	_, err = d.db.Exec(table)
+	if err != nil {
+		log.Errorf("create table error: %v#", err)
+	}
+}
+
+func (d *NewWarnlistDB) LookupStaticAddr(addr string) []string {
+	addr = parseIP(addr).String()
+	if addr == "" {
+		return nil
+	}
+
+	if d.Len() == 0 {
+		return nil
+	}
+
+	rows, err := d.db.Query("SELECT abnormal_domain FROM abnormal_domain_all where IP like ?", "%"+addr+"%")
+	if err != nil {
+		log.Errorf("lookup addr error: %v#", err)
+	}
+	var blacklist []string
+	for rows.Next() {
+		var domain string
+		err = rows.Scan(&domain)
+		if err != nil {
+			log.Errorf("lookup addr error: %v#", err)
+		}
+		blacklist = append(blacklist, domain)
+	}
+	return blacklist
+}
+
+// lookupStaticHost looks up the IP addresses for the given host from the blacklists file.
+func (d *NewWarnlistDB) lookupStaticHost(host string, qtype uint16) []net.IP {
+	if d.Len() == 0 {
+		return nil
+	}
+
+	rows, err := d.db.Query("SELECT redirectIP FROM abnormal_domain_all where abnormal_domain=? and qtype = ?", host, qtype)
+	if err != nil {
+		log.Errorf("lookup host error: %v#", err)
+	}
+	var IPs []net.IP
+	for rows.Next() {
+		var redirectIP string
+		err = rows.Scan(&redirectIP)
+		if err != nil {
+			log.Errorf("lookup host error: %v#", err)
+		}
+		IPs = append(IPs, parseIP(redirectIP))
+	}
+	return removeDuplication_map(IPs)
+}
+
+func (d *NewWarnlistDB) LookupStaticHostV4(host string) []net.IP {
+	host = strings.ToLower(host)
+	ip := d.lookupStaticHost(host, dns.TypeA)
+	return ip
+}
+
+// LookupStaticHostV6 looks up the IPv6 addresses for the given host from the blacklists file.
+func (d *NewWarnlistDB) LookupStaticHostV6(host string) []net.IP {
+	host = strings.ToLower(host)
+	ip := d.lookupStaticHost(host, dns.TypeAAAA)
+	return ip
+}
 
 type GoMapWarnlist struct {
 	warnlist *Map
@@ -153,14 +327,19 @@ func (m *GoMapWarnlist) LookupStaticAddr(addr string) []string {
 }
 
 // lookupStaticHost looks up the IP addresses for the given host from the blacklists file.
-func (m *GoMapWarnlist) lookupStaticHost(list map[string][]net.IP, host string) []net.IP {
-	if len(list) == 0 {
+func (m *GoMapWarnlist) lookupStaticHost(host string, qtype uint16) []net.IP {
+	if qtype == dns.TypeA && len(m.warnlist.name4) == 0 {
+		return nil
+	}
+	if qtype == dns.TypeAAAA && len(m.warnlist.name4) == 0 {
 		return nil
 	}
 
-	ips, ok := list[host]
-	if !ok {
-		return nil
+	var ips []net.IP
+	if qtype == dns.TypeA {
+		ips = m.warnlist.name4[host]
+	} else {
+		ips = m.warnlist.name6[host]
 	}
 	ipsCp := make([]net.IP, len(ips))
 	copy(ipsCp, ips)
@@ -169,14 +348,14 @@ func (m *GoMapWarnlist) lookupStaticHost(list map[string][]net.IP, host string) 
 
 func (m *GoMapWarnlist) LookupStaticHostV4(host string) []net.IP {
 	host = strings.ToLower(host)
-	ip := m.lookupStaticHost(m.warnlist.name4, host)
+	ip := m.lookupStaticHost(host, dns.TypeA)
 	return ip
 }
 
 // LookupStaticHostV6 looks up the IPv6 addresses for the given host from the blacklists file.
 func (m *GoMapWarnlist) LookupStaticHostV6(host string) []net.IP {
 	host = strings.ToLower(host)
-	ip := m.lookupStaticHost(m.warnlist.name6, host)
+	ip := m.lookupStaticHost(host, dns.TypeAAAA)
 	return ip
 }
 
@@ -204,6 +383,25 @@ func buildCacheFromFile(options PluginOptions) (Warnlist, error) {
 	}
 
 	return warnlist, err
+}
+
+func buildDBFromFile(options PluginOptions) (Warnlist, error) {
+	// Print a log message with the time it took to build the cache
+	defer logTime("Building warnlist file took %s", time.Now())
+
+	var warnlist Warnlist
+	{
+		warnlist = NewWarnlistFile()
+	}
+
+	for domain := range domainsFromSource(options.DomainSource, options.DomainSourceType, options.FileFormat) {
+		warnlist.Add(domain)
+	}
+
+	count := warnlist.Len()
+	log.Infof("added %d domains to warnlist", count)
+
+	return warnlist, nil
 }
 
 // isFullPrefixMatch is a radix helper to determine if the prefix match is valid.
@@ -264,4 +462,20 @@ func parseIP(addr string) net.IP {
 	}
 
 	return net.ParseIP(addr)
+}
+
+func removeDuplication_map(arr []net.IP) []net.IP {
+	set := make(map[string]struct{}, len(arr))
+	j := 0
+	for _, v := range arr {
+		_, ok := set[v.String()]
+		if ok {
+			continue
+		}
+		set[v.String()] = struct{}{}
+		arr[j] = v
+		j++
+	}
+
+	return arr[:j]
 }

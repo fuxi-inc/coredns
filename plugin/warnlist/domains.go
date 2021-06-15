@@ -68,11 +68,11 @@ func domainsFromSource(source string, sourceType string, sourceFormat string) ch
 				if accessToken == "" {
 					getAccessToken(source)
 				}
-				log.Infof("access_token: %s", accessToken)
+				//log.Infof("access_token: %s", accessToken)
 				req, _ := http.NewRequest("GET", source+"/abnormal_domain/all", nil)
 				// 比如说设置个token
 				req.Header.Set("Authorization", "Bearer "+accessToken)
-				log.Infof("%s", req.Header.Get("Authorization"))
+				//log.Infof("%s", req.Header.Get("Authorization"))
 				resp, err := (&http.Client{}).Do(req)
 				if err != nil {
 					log.Error(err)
@@ -105,7 +105,7 @@ func domainsFromSource(source string, sourceType string, sourceFormat string) ch
 				//domain = strings.Fields(domain)[1] // Assumes hostfile format:   127.0.0.1  some.host
 				var dat map[string]string
 				if err := json.Unmarshal([]byte(domain), &dat); err == nil {
-					domain = dat["domain"]
+					domain = dat["ip"] + " " + dat["domain"]
 				} else {
 					log.Error(err)
 				}
