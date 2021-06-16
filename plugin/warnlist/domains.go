@@ -10,6 +10,8 @@ import (
 )
 
 const (
+	DomainStorageTypeMemory  = "memory"
+	DomainStorageTypeFileDB  = "filedb"
 	DomainFileFormatHostfile = "hostfile"
 	DomainFileFormatTextList = "text"
 	DomainSourceTypeFile     = "file"
@@ -105,7 +107,7 @@ func domainsFromSource(source string, sourceType string, sourceFormat string) ch
 				//domain = strings.Fields(domain)[1] // Assumes hostfile format:   127.0.0.1  some.host
 				var dat map[string]string
 				if err := json.Unmarshal([]byte(domain), &dat); err == nil {
-					domain = dat["ip"] + " " + dat["domain"]
+					domain = dat["ip"] + " " + dat["domain"] + " " + redirectIP + " " + redirectDomain
 				} else {
 					log.Error(err)
 				}

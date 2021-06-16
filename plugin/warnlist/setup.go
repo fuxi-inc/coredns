@@ -16,6 +16,7 @@ const MaxJitterPercent = 30
 
 // PluginOptions stores the configuration options given in the corefile
 type PluginOptions struct {
+	StorageType      string
 	DomainSource     string
 	DomainSourceType string
 	FileFormat       string
@@ -105,12 +106,23 @@ func parseArguments(c *caddy.Controller) (PluginOptions, error) {
 	options := PluginOptions{}
 
 	// Match subdomains by default
-	options.MatchSubdomains = true
+	options.MatchSubdomains = false
 
 	for c.NextBlock() {
 		if err := parseBlock(c, &options); err != nil {
 			return options, err
 		}
+	}
+
+	// Check that the specified file format is valid
+	valid := false
+	for _, t := range []string{DomainStorageTypeMemory, DomainStorageTypeFileDB} {
+		if options.StorageType == t {
+			valid = true
+		}
+	}
+	if !valid {
+		return options, plugin.Error("warnlist", c.Errf("unknown storage format: %s", options.StorageType))
 	}
 
 	// Check that a source for the warnlist was given
@@ -120,7 +132,7 @@ func parseArguments(c *caddy.Controller) (PluginOptions, error) {
 	}
 
 	// Check that the specified file format is valid
-	valid := false
+	valid = false
 	for _, t := range []string{DomainFileFormatHostfile, DomainFileFormatTextList, DomainSourceTypeJSON} {
 		if options.FileFormat == t {
 			valid = true
@@ -136,6 +148,11 @@ func parseArguments(c *caddy.Controller) (PluginOptions, error) {
 // Parses the configuration lines following our plugin declaration in the Corefile
 func parseBlock(c *caddy.Controller, options *PluginOptions) error {
 	switch c.Val() {
+	case "storage":
+		if !c.NextArg() {
+			return c.ArgErr()
+		}
+		options.StorageType = c.Val()
 	case "file":
 		if !c.NextArg() {
 			return c.ArgErr()
@@ -147,7 +164,6 @@ func parseBlock(c *caddy.Controller, options *PluginOptions) error {
 		}
 		options.FileFormat = c.Val()
 		log.Infof("Using domain warnlist file: %s with format %s", options.DomainSource, options.FileFormat)
-
 	case "match_subdomains":
 		if !c.NextArg() {
 			return c.ArgErr()

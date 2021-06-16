@@ -3,6 +3,7 @@
   tls deployment/dev/dns.heze+6.pem deployment/dev/dns.heze+6-key.pem
 
   warnlist {
+    storage filedb
     url http://125.254.168.52:10528/v1 json
     reload 60m
     match_subdomains false

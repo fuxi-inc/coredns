@@ -2,7 +2,6 @@ package warnlist
 
 import (
 	"context"
-	"github.com/coredns/coredns/plugin/pkg/dnsutil"
 	"io"
 	"net"
 	"os"
@@ -55,7 +54,9 @@ func (wp *WarnlistPlugin) ServeDNS(ctx context.Context, w dns.ResponseWriter, r 
 
 		switch qtype {
 		case dns.TypePTR:
-			names := wp.warnlist.LookupStaticAddr(dnsutil.ExtractAddressFromReverse(qname))
+			//log.Infof(qname)
+			//log.Infof(dnsutil.ExtractAddressFromReverse(qname))
+			names := wp.warnlist.LookupStaticAddr(qname[:len(qname)-1])
 			if len(names) == 0 {
 				// If this doesn't match we need to fall through regardless of b.Fallthrough
 				return plugin.NextOrFailure(wp.Name(), wp.Next, ctx, w, r)
@@ -88,7 +89,7 @@ func (wp *WarnlistPlugin) ServeDNS(ctx context.Context, w dns.ResponseWriter, r 
 		if hit {
 			// Warn and increment the counter for the hit
 			warnlistCount.WithLabelValues(metrics.WithServer(ctx), req.IP(), req.Name()).Inc()
-			log.Infof("host ", req.IP(), " requested warnlisted domain: ", req.Name())
+			log.Infof("host: %s, requested warnlisted domain: %s ", req.IP(), req.Name())
 
 			m := new(dns.Msg)
 			m.SetReply(r)

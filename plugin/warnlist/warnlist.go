@@ -13,6 +13,7 @@ import (
 )
 
 var redirectIP = "127.0.0.1"
+var redirectDomain = "block.localhost"
 
 // Map contains the IPv4/IPv6 and reverse mapping.
 type Map struct {
@@ -198,7 +199,8 @@ func (d *NewWarnlistDB) Open() {
     	abnormal_domain VARCHAR(256) NOT NULL,
         IP VARCHAR(256) NULL,
         qtype SMALLINT unsigned NULL,
-        redirectIP varchar(256) DEFAULT('127.0.0.1')
+        redirectIP varchar(256) DEFAULT('127.0.0.1'),
+        redirectDomain varchar(256) DEFAULT('block.localhost')
     );
     `
 	_, err = d.db.Exec(table)
@@ -208,7 +210,8 @@ func (d *NewWarnlistDB) Open() {
 }
 
 func (d *NewWarnlistDB) LookupStaticAddr(addr string) []string {
-	addr = parseIP(addr).String()
+	//log.Infof(addr)
+
 	if addr == "" {
 		return nil
 	}
@@ -217,7 +220,7 @@ func (d *NewWarnlistDB) LookupStaticAddr(addr string) []string {
 		return nil
 	}
 
-	rows, err := d.db.Query("SELECT abnormal_domain FROM abnormal_domain_all where IP like ?", "%"+addr+"%")
+	rows, err := d.db.Query("SELECT redirectDomain FROM abnormal_domain_all where IP like ?", "%"+addr+"%")
 	if err != nil {
 		log.Errorf("lookup addr error: %v#", err)
 	}
@@ -230,7 +233,8 @@ func (d *NewWarnlistDB) LookupStaticAddr(addr string) []string {
 		}
 		blacklist = append(blacklist, domain)
 	}
-	return blacklist
+	//log.Infof("a", string((len(blacklist))))
+	return removeDuplicationDomain(blacklist)
 }
 
 // lookupStaticHost looks up the IP addresses for the given host from the blacklists file.
@@ -252,7 +256,7 @@ func (d *NewWarnlistDB) lookupStaticHost(host string, qtype uint16) []net.IP {
 		}
 		IPs = append(IPs, parseIP(redirectIP))
 	}
-	return removeDuplication_map(IPs)
+	return removeDuplicationIP(IPs)
 }
 
 func (d *NewWarnlistDB) LookupStaticHostV4(host string) []net.IP {
@@ -276,25 +280,33 @@ func (m *GoMapWarnlist) Add(rr string) {
 	items := strings.Split(rr, " ")
 	var domain string
 	var addr net.IP
-	if len(items) > 1 {
+	var targetIP net.IP
+	var targetDomain string
+
+	if len(items) == 1 {
+		domain = items[0]
+		targetIP = parseIP(redirectIP)
+	} else if len(items) == 2 {
 		domain = items[1]
-		addr = parseIP(items[0])
-		if addr == nil {
-			addr = parseIP(redirectIP)
+		targetIP = parseIP(items[0])
+		if targetIP == nil {
+			targetIP = parseIP(redirectIP)
 		}
 	} else {
-		domain = items[0]
-		addr = parseIP(redirectIP)
-
+		domain = items[1]
+		addr = parseIP(items[0])
+		targetIP = parseIP(items[2])
+		targetDomain = items[3]
 	}
 
 	if addr.To4() != nil {
-		m.warnlist.name4[domain] = append(m.warnlist.name4[domain], addr)
+		m.warnlist.name4[domain] = append(m.warnlist.name4[domain], targetIP)
 	} else {
-		m.warnlist.name6[domain] = append(m.warnlist.name4[domain], addr)
+		m.warnlist.name6[domain] = append(m.warnlist.name4[domain], targetIP)
 	}
-	m.warnlist.addr[addr.String()] = append(m.warnlist.addr[addr.String()], domain)
-
+	if addr != nil {
+		m.warnlist.addr[addr.String()] = append(m.warnlist.addr[addr.String()], targetDomain)
+	}
 }
 
 func (m *GoMapWarnlist) Contains(key string) bool {
@@ -323,7 +335,7 @@ func (m *GoMapWarnlist) LookupStaticAddr(addr string) []string {
 	}
 
 	blacklists1 := m.warnlist.addr[addr]
-	return blacklists1
+	return removeDuplicationDomain(blacklists1)
 }
 
 // lookupStaticHost looks up the IP addresses for the given host from the blacklists file.
@@ -365,12 +377,12 @@ func buildCacheFromFile(options PluginOptions) (Warnlist, error) {
 
 	var warnlist Warnlist
 	{
-		if options.MatchSubdomains {
-			//warnlist = NewRadixWarnlist()
-			warnlist = NewWarnlist()
-		} else {
-			warnlist = NewWarnlist()
-		}
+		warnlist = NewWarnlist()
+		//if options.MatchSubdomains {
+		//warnlist = NewRadixWarnlist()
+		//} else {
+		//	warnlist = NewWarnlist()
+		//}
 	}
 
 	for domain := range domainsFromSource(options.DomainSource, options.DomainSourceType, options.FileFormat) {
@@ -420,7 +432,13 @@ func logTime(msg string, since time.Time) {
 
 func rebuildWarnlist(wp *WarnlistPlugin) {
 	// Rebuild the cache for the warnlist
-	warnlist, err := buildCacheFromFile(wp.Options)
+	var warnlist Warnlist
+	var err error
+	if wp.Options.StorageType == DomainStorageTypeMemory {
+		warnlist, err = buildCacheFromFile(wp.Options)
+	} else if wp.Options.StorageType == DomainStorageTypeFileDB {
+		warnlist, err = buildDBFromFile(wp.Options)
+	}
 	if err != nil {
 		log.Errorf("error rebuilding warnlist: %v#", err)
 
@@ -464,7 +482,23 @@ func parseIP(addr string) net.IP {
 	return net.ParseIP(addr)
 }
 
-func removeDuplication_map(arr []net.IP) []net.IP {
+func removeDuplicationDomain(arr []string) []string {
+	set := make(map[string]struct{}, len(arr))
+	j := 0
+	for _, v := range arr {
+		_, ok := set[v]
+		if ok {
+			continue
+		}
+		set[v] = struct{}{}
+		arr[j] = v
+		j++
+	}
+
+	return arr[:j]
+}
+
+func removeDuplicationIP(arr []net.IP) []net.IP {
 	set := make(map[string]struct{}, len(arr))
 	j := 0
 	for _, v := range arr {
