@@ -1,8 +1,8 @@
 #!/bin/bash
 
-coredns_path=/home/gopath/src/github.com/coredns/coredns
+coredns_path=/home/fuxi/coredns
 
-log_date=`date -d yesterday +%Y%m%d%H%M%S`
+log_date=`date -d yesterday +%Y%m%d`
 echo $log_date
 
 do_split () {

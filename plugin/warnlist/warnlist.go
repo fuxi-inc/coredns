@@ -172,7 +172,8 @@ func (d *NewWarnlistDB) Contains(key string) bool {
 
 func (d *NewWarnlistDB) Close() error {
 	// Nothing to do to close a map
-	return d.db.Close()
+	return nil
+	//return d.db.Close()
 }
 
 func (d *NewWarnlistDB) Len() int {
@@ -371,13 +372,17 @@ func (m *GoMapWarnlist) LookupStaticHostV6(host string) []net.IP {
 	return ip
 }
 
-func buildCacheFromFile(options PluginOptions) (Warnlist, error) {
+func buildStorageFromFile(options PluginOptions) (Warnlist, error) {
 	// Print a log message with the time it took to build the cache
-	defer logTime("Building warnlist cache took %s", time.Now())
+	defer logTime("Building warnlist took %s", time.Now())
 
 	var warnlist Warnlist
 	{
-		warnlist = NewWarnlist()
+		if options.StorageType == "memory" {
+			warnlist = NewWarnlist()
+		} else {
+			warnlist = NewWarnlistFile()
+		}
 		//if options.MatchSubdomains {
 		//warnlist = NewRadixWarnlist()
 		//} else {
@@ -391,30 +396,30 @@ func buildCacheFromFile(options PluginOptions) (Warnlist, error) {
 
 	err := warnlist.Close()
 	if err == nil {
-		log.Infof("added %d domains to warnlist", warnlist.Len())
+		log.Debug("added %d domains to warnlist", warnlist.Len())
 	}
 
 	return warnlist, err
 }
 
-func buildDBFromFile(options PluginOptions) (Warnlist, error) {
-	// Print a log message with the time it took to build the cache
-	defer logTime("Building warnlist file took %s", time.Now())
-
-	var warnlist Warnlist
-	{
-		warnlist = NewWarnlistFile()
-	}
-
-	for domain := range domainsFromSource(options.DomainSource, options.DomainSourceType, options.FileFormat) {
-		warnlist.Add(domain)
-	}
-
-	count := warnlist.Len()
-	log.Infof("added %d domains to warnlist", count)
-
-	return warnlist, nil
-}
+//func buildDBFromFile(options PluginOptions) (Warnlist, error) {
+//	// Print a log message with the time it took to build the cache
+//	defer logTime("Building warnlist file took %s", time.Now())
+//
+//	var warnlist Warnlist
+//	{
+//		warnlist = NewWarnlistFile()
+//	}
+//
+//	for domain := range domainsFromSource(options.DomainSource, options.DomainSourceType, options.FileFormat) {
+//		warnlist.Add(domain)
+//	}
+//
+//	count := warnlist.Len()
+//	log.Infof("added %d domains to warnlist", count)
+//
+//	return warnlist, nil
+//}
 
 // isFullPrefixMatch is a radix helper to determine if the prefix match is valid.
 func isFullPrefixMatch(input string, match string) bool {
@@ -427,18 +432,12 @@ func isFullPrefixMatch(input string, match string) bool {
 func logTime(msg string, since time.Time) {
 	elapsed := time.Since(since)
 	msg = fmt.Sprintf(msg, elapsed)
-	log.Info(msg)
+	log.Debug(msg)
 }
 
 func rebuildWarnlist(wp *WarnlistPlugin) {
 	// Rebuild the cache for the warnlist
-	var warnlist Warnlist
-	var err error
-	if wp.Options.StorageType == DomainStorageTypeMemory {
-		warnlist, err = buildCacheFromFile(wp.Options)
-	} else if wp.Options.StorageType == DomainStorageTypeFileDB {
-		warnlist, err = buildDBFromFile(wp.Options)
-	}
+	warnlist, err := buildStorageFromFile(wp.Options)
 	if err != nil {
 		log.Errorf("error rebuilding warnlist: %v#", err)
 

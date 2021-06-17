@@ -56,7 +56,7 @@ func domainsFromSource(source string, sourceType string, sourceFormat string) ch
 		var sourceData io.Reader
 		{
 			if sourceType == DomainSourceTypeFile {
-				log.Infof("Loading from file: %s", source)
+				log.Debug("Loading from file: %s", source)
 				file, err := os.Open(source)
 				if err != nil {
 					log.Error(err)
@@ -65,7 +65,7 @@ func domainsFromSource(source string, sourceType string, sourceFormat string) ch
 				sourceData = file
 			} else if sourceType == DomainSourceTypeURL {
 				// TODO
-				log.Infof("Loading from URL: %s", source)
+				log.Debug("Loading from URL: %s", source)
 				// Load the domain list from the URL
 				if accessToken == "" {
 					getAccessToken(source)

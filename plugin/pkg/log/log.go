@@ -13,7 +13,9 @@ import (
 	"io/ioutil"
 	golog "log"
 	"os"
+	"strconv"
 	"sync"
+	"time"
 )
 
 // D controls whether we should output debug logs. If true, we do, once set
@@ -49,7 +51,9 @@ func (d *d) Value() bool {
 
 // logf calls log.Printf prefixed with level.
 func logf(level, format string, v ...interface{}) {
-	golog.Print(level, fmt.Sprintf(format, v...))
+	timestamp := strconv.FormatInt(time.Now().UnixNano()/1e6, 10)
+	prefix := level + timestamp + " "
+	golog.Print(prefix, fmt.Sprintf(format, v...))
 }
 
 // log calls log.Print prefixed with level.

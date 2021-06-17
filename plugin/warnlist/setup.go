@@ -39,7 +39,7 @@ func setup(c *caddy.Controller) error {
 
 	// Build the cache for the warnlist
 	//warnlist, err := buildCacheFromFile(options)
-	warnlist, err := buildDBFromFile(options)
+	warnlist, err := buildStorageFromFile(options)
 
 	reloadTime := time.Now()
 	if err != nil {
@@ -163,7 +163,7 @@ func parseBlock(c *caddy.Controller, options *PluginOptions) error {
 			return c.ArgErr()
 		}
 		options.FileFormat = c.Val()
-		log.Infof("Using domain warnlist file: %s with format %s", options.DomainSource, options.FileFormat)
+		log.Debug("Using domain warnlist file: %s with format %s", options.DomainSource, options.FileFormat)
 	case "match_subdomains":
 		if !c.NextArg() {
 			return c.ArgErr()
@@ -175,9 +175,9 @@ func parseBlock(c *caddy.Controller, options *PluginOptions) error {
 		}
 		options.MatchSubdomains = matchBool
 		if options.MatchSubdomains {
-			log.Infof("matching subdomains")
+			log.Debug("matching subdomains")
 		} else {
-			log.Infof("not matching subdomains")
+			log.Debug("not matching subdomains")
 		}
 
 	case "url":
@@ -193,7 +193,7 @@ func parseBlock(c *caddy.Controller, options *PluginOptions) error {
 			return c.ArgErr()
 		}
 		options.FileFormat = c.Val()
-		log.Infof("Using domain warnlist url: %s with format %s", options.DomainSource, options.FileFormat)
+		log.Debug("Using domain warnlist url: %s with format %s", options.DomainSource, options.FileFormat)
 
 	case "reload":
 		if !c.NextArg() {
@@ -207,7 +207,7 @@ func parseBlock(c *caddy.Controller, options *PluginOptions) error {
 		}
 		t = jitter(t)
 		options.ReloadPeriod = t
-		log.Infof("Using reload period of: %s", options.ReloadPeriod)
+		log.Debug("Using reload period of: %s", options.ReloadPeriod)
 	}
 
 	return nil

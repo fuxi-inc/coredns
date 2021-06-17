@@ -2,9 +2,12 @@ package warnlist
 
 import (
 	"context"
+	"github.com/coredns/coredns/plugin/pkg/dnstest"
+	"github.com/coredns/coredns/plugin/pkg/replacer"
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/coredns/coredns/request"
@@ -89,18 +92,30 @@ func (wp *WarnlistPlugin) ServeDNS(ctx context.Context, w dns.ResponseWriter, r 
 		if hit {
 			// Warn and increment the counter for the hit
 			warnlistCount.WithLabelValues(metrics.WithServer(ctx), req.IP(), req.Name()).Inc()
-			log.Infof("host: %s, requested warnlisted domain: %s ", req.IP(), req.Name())
 
 			m := new(dns.Msg)
 			m.SetReply(r)
 			m.Authoritative = true
 			m.Answer = answers
 			w.WriteMsg(m)
+
+			//rrw := dnstest.NewRecorder(w)
+			// If we don't set up a class in config, the default "all" will be added
+			// and we shouldn't have an empty rule.Class.
+			var repl replacer.Replacer
+			state := request.Request{W: w, Req: r}
+			rrw := dnstest.NewRecorder(w)
+			format := `{remote}:{port} ` + replacer.EmptyValue + ` {>id} "{type} {class} {name} {proto} {size} {>do} {>bufsize}" {rcode} {>rflags} {rsize} {duration}`
+			timestamp := strconv.FormatInt(time.Now().UnixNano()/1e6, 10)
+			logstr := timestamp + " " + repl.Replace(ctx, state, rrw, format)
+
+			log.Infof("%s ", logstr)
+
 			return dns.RcodeSuccess, nil
 		}
 
 	} else {
-		log.Infof("no warnlist has been loaded")
+		log.Debug("no warnlist has been loaded")
 		// Update the current warnlist size metric to 0
 		warnlistSize.WithLabelValues(metrics.WithServer(ctx)).Set(float64(0))
 	}

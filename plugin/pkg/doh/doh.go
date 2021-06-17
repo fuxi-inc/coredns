@@ -151,8 +151,8 @@ func requestToMsgGet(req *http.Request) (*dns.Msg, error) {
 			e.Code = dns.EDNS0SUBNET
 			address := strings.Split(ecs[0], "/")[0]
 			netmask := strings.Split(ecs[0], "/")[1]
-			fmt.Printf("address:%s\n", address)
-			fmt.Printf("netmask:%s\n", netmask)
+			//fmt.Printf("address:%s\n", address)
+			//fmt.Printf("netmask:%s\n", netmask)
 			if strings.Contains(ecs[0], ".") {
 				e.Family = 1
 				e.Address = net.ParseIP(address).To4()
@@ -160,32 +160,32 @@ func requestToMsgGet(req *http.Request) (*dns.Msg, error) {
 				e.Family = 2
 				e.Address = net.ParseIP(address)
 			}
-			fmt.Printf("e.address:%s\n", e.Address)
+			//fmt.Printf("e.address:%s\n", e.Address)
 			if result, err := strconv.Atoi(netmask); err != nil {
 				e.SourceNetmask = uint8(result)
 			}
 			e.SourceScope = 0
-			fmt.Printf("opt:%s\n", e)
+			//fmt.Printf("opt:%s\n", e)
 			o.Option = append(o.Option, e)
-			fmt.Printf("opt:%s\n", e)
+			//fmt.Printf("opt:%s\n", e)
 		}
 
 		m := new(dns.Msg)
 		m.Opcode = dns.OpcodeQuery
 		m.CheckingDisabled = cd
 		m.Question = append(m.Question, dns.Question{Name: name[0] + ".", Qtype: qType, Qclass: dns.ClassINET})
-		fmt.Printf("o:%s\n", o)
+		//fmt.Printf("o:%s\n", o)
 		if o != nil {
 			m.Extra = append(m.Extra, o)
 		}
-		fmt.Printf("msg:%s\n", m)
+		//fmt.Printf("msg:%s\n", m)
 
 		msg, err := m.Pack()
 		if err != nil {
 		}
 		return base64ToMsg(base64.RawURLEncoding.EncodeToString(msg))
 	} else {
-		fmt.Printf("DoH request:%s\n", req.URL)
+		//fmt.Printf("DoH request:%s\n", req.URL)
 		values := req.URL.Query()
 		b64, ok := values["dns"]
 		if !ok {
