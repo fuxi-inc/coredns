@@ -5,12 +5,15 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/miekg/dns"
+	"io"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/miekg/dns"
 
 	"github.com/coredns/caddy"
 	"github.com/coredns/coredns/plugin/pkg/dnsutil"
@@ -18,6 +21,9 @@ import (
 	"github.com/coredns/coredns/plugin/pkg/response"
 	"github.com/coredns/coredns/plugin/pkg/reuseport"
 	"github.com/coredns/coredns/plugin/pkg/transport"
+
+	"github.com/coredns/coredns/plugin/pkg/dnstest"
+	"github.com/coredns/coredns/request"
 )
 
 // ServerHTTPS represents an instance of a DNS-over-HTTPS server.
@@ -196,6 +202,7 @@ func (s *ServerHTTPS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write(buf)
 	}
 
+	DoHLog(dw, w, msg)
 }
 
 // Shutdown stops the server (non gracefully).
@@ -203,5 +210,66 @@ func (s *ServerHTTPS) Shutdown() error {
 	if s.httpsServer != nil {
 		s.httpsServer.Shutdown(context.Background())
 	}
+	return nil
+}
+
+// DoH Log handler with its items and format.
+func DoHLog(dw *DoHWriter, w http.ResponseWriter, msg *dns.Msg) {
+	state := request.Request{W: dw, Req: msg}
+	rrw := dnstest.NewRecorder(dw)
+	//format := `{remote}:{port} ` + replacer.EmptyValue + ` {>id} "{type} {class} {name} {proto} {size} {>do} {>bufsize}" {rcode} {>rflags} {rsize} {duration}`
+	timestamp := strconv.FormatInt(time.Now().UnixNano()/1e6, 10)
+	replace := make(map[string]string)
+	replace["{remote}:{port}"] = state.RemoteAddr()
+	replace["emptyValue"] = "-"
+	replace["id"] = strconv.FormatInt(int64(state.Req.Id), 10)
+	replace["type"] = state.Type()
+	replace["class"] = state.Class()
+	replace["name"] = state.Name()
+	replace["proto"] = state.Proto()
+	replace["size"] = strconv.FormatInt(int64(state.Req.Len()), 10)
+	replace["do"] = strconv.FormatBool(state.Do())
+	replace["bufsize"] = strconv.FormatInt(int64(state.Size()), 10)
+	if rrw == nil {
+		replace["rcode"] = "-"
+	} else if rcode := dns.RcodeToString[rrw.Rcode]; rcode != "" {
+		replace["rcode"] = rcode
+	} else {
+		replace["rcode"] = strconv.FormatInt(int64(rrw.Rcode), 10)
+	}
+	replace["rflags"] = "-"
+	if w == nil {
+		replace["rsize"] = "-"
+	} else {
+		replace["rsize"] = strconv.FormatInt(int64(rrw.Len), 10)
+	}
+	if rrw == nil {
+		replace["duration"] = "-"
+	} else {
+		secs := time.Since(rrw.Start).Seconds()
+		replace["duration"] = strconv.FormatFloat(secs, 'f', -1, 64) + "s"
+	}
+	//format := `{remote}:{port} ` + replacer.EmptyValue + ` {>id} "{type} {class} {name} {proto} {size} {>do} {>bufsize}" {rcode} {>rflags} {rsize} {duration}`
+	logstr := "[INFO] " + timestamp + " " + replace["{remote}:{port}"] + " " + replace["emptyValue"] + " " + replace["id"] + " \"" + replace["type"] + " " + replace["class"] + " " + replace["name"] + " " + replace["proto"] + " " + replace["size"] + " " + replace["do"] + " " + replace["bufsize"] + "\" " + replace["rcode"] + " " + replace["rflags"] + " " + replace["rsize"] + " " + replace["duration"]
+	WriteDoHLog(logstr)
+}
+
+// Write log in DoH log file.
+func WriteDoHLog(LogItem string) error {
+	filePath := "/home/fuxi/coredns/"
+	fileName := "coredns_doh.log"
+	lineFeed := "\r\n"
+	f, err := os.OpenFile(filePath+fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Println("DoH log file create failed. err: " + err.Error())
+		return err
+	} else {
+		_, err := io.WriteString(f, LogItem+lineFeed)
+		if err != nil {
+			fmt.Println("DoH log writing failed. err: " + err.Error())
+			return err
+		}
+	}
+	defer f.Close()
 	return nil
 }

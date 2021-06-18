@@ -19,7 +19,22 @@ do_split () {
     fi
 }
 
+do_split_doh () {
+    [ ! -d ${coredns_path}/logs ] && mkdir -p ${coredns_path}/logs
+    source_file=${coredns_path}/coredns_doh.log
+    dest_file=${coredns_path}/logs/${log_date}_doh.log
+    cp $source_file $dest_file
+    cat /dev/null > $source_file
+    if [ $? -eq 0 ];then
+        echo "Daily split is finished!"
+    else
+        echo "Daily Split is Failed!"
+        exit 1
+    fi
+}
+
 do_split
+do_split_doh
 
 #do_del_log() {
 #    find logs -type f -cmin +7 | xargs rm -rf
