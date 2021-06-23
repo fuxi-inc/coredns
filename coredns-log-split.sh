@@ -26,15 +26,30 @@ do_split_doh () {
     cp $source_file $dest_file
     cat /dev/null > $source_file
     if [ $? -eq 0 ];then
-        echo "Daily split is finished!"
+        echo "DoH daily split is finished!"
     else
-        echo "Daily Split is Failed!"
+        echo "DoH daily Split is Failed!"
+        exit 1
+    fi
+}
+
+do_split_dot () {
+    [ ! -d ${coredns_path}/logs ] && mkdir -p ${coredns_path}/logs
+    source_file=${coredns_path}/coredns_dot.log
+    dest_file=${coredns_path}/logs/${log_date}_dot.log
+    cp $source_file $dest_file
+    cat /dev/null > $source_file
+    if [ $? -eq 0 ];then
+        echo "DoT daily split is finished!"
+    else
+        echo "DoT daily Split is Failed!"
         exit 1
     fi
 }
 
 do_split
 do_split_doh
+do_split_dot
 
 #do_del_log() {
 #    find logs -type f -cmin +7 | xargs rm -rf
