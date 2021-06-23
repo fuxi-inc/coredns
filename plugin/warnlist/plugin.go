@@ -38,7 +38,8 @@ type WarnlistPlugin struct {
 func (wp *WarnlistPlugin) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
 	req := request.Request{W: w, Req: r}
 	qname := req.Name()
-	qtype := req.QType()
+	srcIP := req.IP()
+	//qtype := req.QType()
 	answers := []dns.RR{}
 
 	//log.Infof("qname:", qname)
@@ -55,33 +56,46 @@ func (wp *WarnlistPlugin) ServeDNS(ctx context.Context, w dns.ResponseWriter, r 
 
 		hit := false
 
-		switch qtype {
-		case dns.TypePTR:
+		parseIPResult := parseIP(qname[:len(qname)-1])
+		if parseIPResult != nil {
 			//log.Infof(qname)
 			//log.Infof(dnsutil.ExtractAddressFromReverse(qname))
-			names := wp.warnlist.LookupStaticAddr(qname[:len(qname)-1])
+			names := wp.warnlist.LookupStaticAddr(srcIP, qname[:len(qname)-1])
 			if len(names) == 0 {
 				// If this doesn't match we need to fall through regardless of b.Fallthrough
 				return plugin.NextOrFailure(wp.Name(), wp.Next, ctx, w, r)
 			}
 			hit = true
-			answers = ptr(qname, 3600, names)
-		case dns.TypeA:
-			ips := wp.warnlist.LookupStaticHostV4(qname)
-			if len(ips) == 0 {
+			answers = a(qname, 3600, names)
+			//answers = append(a(qname, 3600, names), aaaa(qname, 3600, names)...)
+			//answers = ptr(qname, 3600, names)
+		} else {
+			ipv4s := wp.warnlist.LookupStaticHostV4(srcIP, qname)
+			ipv6s := wp.warnlist.LookupStaticHostV6(srcIP, qname)
+
+			if len(ipv4s) == 0 && len(ipv6s) == 0 {
 				// If this doesn't match we need to fall through regardless of b.Fallthrough
 				return plugin.NextOrFailure(wp.Name(), wp.Next, ctx, w, r)
 			}
 			hit = true
-			answers = a(qname, 3600, ips)
-		case dns.TypeAAAA:
-			ips := wp.warnlist.LookupStaticHostV6(qname)
-			if len(ips) == 0 {
-				// If this doesn't match we need to fall through regardless of b.Fallthrough
-				return plugin.NextOrFailure(wp.Name(), wp.Next, ctx, w, r)
-			}
-			hit = true
-			answers = aaaa(qname, 3600, ips)
+			answers = append(a(qname, 3600, ipv4s), aaaa(qname, 3600, ipv6s)...)
+			//case dns.TypeA:
+			//	ips := wp.warnlist.LookupStaticHostV4(qname)
+			//	if len(ips) == 0 {
+			//		// If this doesn't match we need to fall through regardless of b.Fallthrough
+			//		return plugin.NextOrFailure(wp.Name(), wp.Next, ctx, w, r)
+			//	}
+			//	hit = true
+			//	answers = a(qname, 3600, ips)
+			//case dns.TypeAAAA:
+			//	ips := wp.warnlist.LookupStaticHostV6(qname)
+			//	if len(ips) == 0 {
+			//		// If this doesn't match we need to fall through regardless of b.Fallthrough
+			//		return plugin.NextOrFailure(wp.Name(), wp.Next, ctx, w, r)
+			//	}
+			//	hit = true
+			//	answers = aaaa(qname, 3600, ips)
+
 		}
 
 		// Record the duration for the query

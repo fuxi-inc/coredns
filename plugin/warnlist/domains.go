@@ -2,10 +2,13 @@ package warnlist
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -21,6 +24,14 @@ const (
 
 var loginStatus = false
 var accessToken = ""
+
+type Custom struct {
+	UserId      int      `json:"user_id"`
+	IPRange     []string `json:"ip_range"`
+	Blacklist   []string `json:"black_list"`
+	Whitelist   []string `json:"white_list"`
+	BlockTarget string   `json:"block_target"`
+}
 
 func login(source string) (*http.Response, error) {
 	resp, err := http.Post(source+"/account/login", "application/x-www-form-urlencoded", strings.NewReader("username=fuxi&password=fuxiDnS"))
@@ -44,6 +55,19 @@ func getAccessToken(source string) {
 		}
 		break
 	}
+}
+
+func requestAPI(url string) *http.Response {
+	//log.Infof("access_token: %s", accessToken)
+	req, _ := http.NewRequest("GET", url, nil)
+	// 比如说设置个token
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	//log.Infof("%s", req.Header.Get("Authorization"))
+	resp, err := (&http.Client{}).Do(req)
+	if err != nil {
+		log.Error(err)
+	}
+	return resp
 }
 
 func domainsFromSource(source string, sourceType string, sourceFormat string) chan string {
@@ -70,20 +94,23 @@ func domainsFromSource(source string, sourceType string, sourceFormat string) ch
 				if accessToken == "" {
 					getAccessToken(source)
 				}
-				//log.Infof("access_token: %s", accessToken)
-				req, _ := http.NewRequest("GET", source+"/abnormal_domain/all", nil)
-				// 比如说设置个token
-				req.Header.Set("Authorization", "Bearer "+accessToken)
-				//log.Infof("%s", req.Header.Get("Authorization"))
-				resp, err := (&http.Client{}).Do(req)
-				if err != nil {
-					log.Error(err)
-				}
+				resp := requestAPI(source + "/abnormal_domain/all")
 				if strings.Split(resp.Status, " ")[0] == "401" {
 					getAccessToken(source)
+					resp = requestAPI(source + "/abnormal_domain/all")
 				}
 				defer resp.Body.Close()
 				sourceData = resp.Body
+				buf := new(bytes.Buffer)
+				buf.ReadFrom(resp.Body)
+				all_json := buf.String()
+
+				resp = requestAPI(source + "/abnormal_domain/users")
+				buf = new(bytes.Buffer)
+				buf.ReadFrom(resp.Body)
+				users_json := buf.String()
+
+				sourceData = ioutil.NopCloser(strings.NewReader(all_json + users_json))
 			}
 		}
 		scanner := bufio.NewScanner(sourceData)
@@ -105,11 +132,19 @@ func domainsFromSource(source string, sourceType string, sourceFormat string) ch
 
 			if sourceFormat == DomainSourceTypeJSON {
 				//domain = strings.Fields(domain)[1] // Assumes hostfile format:   127.0.0.1  some.host
+				//log.Infof(domain)
 				var dat map[string]string
 				if err := json.Unmarshal([]byte(domain), &dat); err == nil {
-					domain = dat["ip"] + " " + dat["domain"] + " " + redirectIP + " " + redirectDomain
+					domain = "all " + dat["ip"] + " " + dat["domain"]
+					//domain = dat["ip"] + " " + dat["domain"] + " " + redirectIP
 				} else {
-					log.Error(err)
+					var custom Custom
+					if err := json.Unmarshal([]byte(domain), &custom); err == nil {
+						//println(custom)
+						domain = "users " + strconv.Itoa(custom.UserId) + " " + strings.Join(custom.IPRange, `,`) + " " + strings.Join(custom.Blacklist, `,`) + " " + strings.Join(custom.Whitelist, `,`) + " " + custom.BlockTarget
+					} else {
+						log.Error(err)
+					}
 				}
 			}
 

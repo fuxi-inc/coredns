@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/miekg/dns"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -12,8 +13,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var redirectIP = "127.0.0.1"
-var redirectDomain = "block.localhost"
+var redirectIP = "139.196.13.242"
+
+//var redirectDomain = "block.localhost"
 
 // Map contains the IPv4/IPv6 and reverse mapping.
 type Map struct {
@@ -24,24 +26,24 @@ type Map struct {
 	// Key for the list of host names must be a literal IP address
 	// including IPv6 address without zone identifier.
 	// We don't support old-classful IP address notation.
-	addr map[string][]string
+	addr map[string][]net.IP
 }
 
 func newMap() *Map {
 	return &Map{
 		name4: make(map[string][]net.IP),
 		name6: make(map[string][]net.IP),
-		addr:  make(map[string][]string),
+		addr:  make(map[string][]net.IP),
 	}
 }
 
 type Warnlist interface {
 	Add(rr string)
 	Contains(key string) bool
-	lookupStaticHost(host string, qtype uint16) []net.IP
-	LookupStaticAddr(addr string) []string
-	LookupStaticHostV4(host string) []net.IP
-	LookupStaticHostV6(host string) []net.IP
+	lookupStaticHost(srcIP string, host string, qtype uint16) []net.IP
+	LookupStaticAddr(srcIP string, addr string) []net.IP
+	LookupStaticHostV4(srcIP string, host string) []net.IP
+	LookupStaticHostV6(srcIP string, host string) []net.IP
 	Close() error
 	Len() int
 	Open()
@@ -106,49 +108,54 @@ func NewWarnlistFile() Warnlist {
 //
 
 type NewWarnlistDB struct {
-	db *sql.DB
+	db        *sql.DB
+	defaultIP string
 }
 
 func (d *NewWarnlistDB) Add(rr string) {
+	//log.Infof("rr:%s", rr)
 	items := strings.Split(rr, " ")
-	rows, err := d.db.Query("SELECT count(*) FROM abnormal_domain_all where abnormal_domain=? and IP = ?", items[1], items[0])
-	if err != nil {
-		log.Errorf("query error: %v#", err)
-	}
-
-	var count int
-	for rows.Next() {
-		err = rows.Scan(&count)
+	if items[0] == "users" {
+		stmt, err := d.db.Prepare("REPLACE INTO abnormal_domain_users(user_id,ip_range,black_list,white_list,block_target) values(?,?,?,?,?)")
+		if err != nil {
+			log.Errorf("prepare sql error: %v#", err)
+		}
+		userId, err := strconv.Atoi(items[1])
+		_, err = stmt.Exec(userId, items[2], items[3], items[4], items[5])
+		if err != nil {
+			log.Errorf("replace into error: %v#", err)
+		}
+	} else if items[0] == "all" {
+		rows, err := d.db.Query("SELECT count(*) FROM abnormal_domain_all where abnormal_domain=? and IP = ?", items[2], items[1])
 		if err != nil {
 			log.Errorf("query error: %v#", err)
 		}
-	}
-	if count > 0 {
-		stmt, err := d.db.Prepare("UPDATE abnormal_domain_all SET redirectIP=?")
-		if err != nil {
-			log.Errorf("prepare sql error: %v#", err)
-		}
-		_, err = stmt.Exec(redirectIP)
-		if err != nil {
-			log.Errorf("update error: %v#", err)
-		}
-	} else {
-		stmt, err := d.db.Prepare("INSERT INTO abnormal_domain_all(abnormal_domain, IP, qtype, redirectIP)  values(?, ?, ?, ?)")
-		if err != nil {
-			log.Errorf("prepare sql error: %v#", err)
-		}
 
-		var queryType uint16
-		if items[0] != "" {
-			if parseIP(items[0]).To4() != nil {
-				queryType = dns.TypeA
-			} else {
-				queryType = dns.TypeA
+		var count int
+		for rows.Next() {
+			err = rows.Scan(&count)
+			if err != nil {
+				log.Errorf("query error: %v#", err)
 			}
 		}
-		_, err = stmt.Exec(items[1], items[0], queryType, redirectIP)
-		if err != nil {
-			log.Errorf("insertd error: %v#", err)
+		if count == 0 {
+			stmt, err := d.db.Prepare("INSERT INTO abnormal_domain_all(abnormal_domain, IP, qtype)  values(?, ?, ?)")
+			if err != nil {
+				log.Errorf("prepare sql error: %v#", err)
+			}
+
+			var queryType uint16
+			if items[0] != "" {
+				if parseIP(items[0]).To4() != nil {
+					queryType = dns.TypeA
+				} else {
+					queryType = dns.TypeA
+				}
+			}
+			_, err = stmt.Exec(items[2], items[1], queryType)
+			if err != nil {
+				log.Errorf("insertd error: %v#", err)
+			}
 		}
 	}
 
@@ -192,25 +199,62 @@ func (d *NewWarnlistDB) Len() int {
 }
 
 func (d *NewWarnlistDB) Open() {
-	database, err := sql.Open("sqlite3", "./blacklists.db")
-	d.db = database
-	table := `
+	all_db, err := sql.Open("sqlite3", "./blacklists.db")
+	d.db = all_db
+	all_table := `
     CREATE TABLE IF NOT EXISTS abnormal_domain_all (
     	id INTEGER PRIMARY KEY AUTOINCREMENT,
     	abnormal_domain VARCHAR(256) NOT NULL,
         IP VARCHAR(256) NULL,
-        qtype SMALLINT unsigned NULL,
-        redirectIP varchar(256) DEFAULT('127.0.0.1'),
-        redirectDomain varchar(256) DEFAULT('block.localhost')
+        qtype SMALLINT unsigned NULL
     );
     `
-	_, err = d.db.Exec(table)
+	_, err = d.db.Exec(all_table)
 	if err != nil {
 		log.Errorf("create table error: %v#", err)
 	}
+
+	users_table := `
+    CREATE TABLE IF NOT EXISTS abnormal_domain_users (
+    	user_id INTEGER PRIMARY KEY,
+        ip_range VARCHAR,
+        black_list VARCHAR,
+        white_list VARCHAR,
+        block_target VARCHAR DEFAULT('139.196.13.242')
+    );
+    `
+	_, err = d.db.Exec(users_table)
+	if err != nil {
+		log.Errorf("create table error: %v#", err)
+	}
+
+	//
+	//stmt, err := d.db.Prepare("INSERT INTO abnormal_domain_users(user_id, ip_range, black_list, white_list, block_target)  values(?, ?, ?, ?, ?)")
+	//if err != nil {
+	//	log.Errorf("prepare sql error: %v#", err)
+	//}
+	//_, err = stmt.Exec(111, "127.0.0.1", "baoying365.com","","111.1.1.1")
+
+	rows, err := d.db.Query("SELECT block_target FROM abnormal_domain_users where user_id=?", 0)
+	if err != nil {
+		log.Errorf("query error: %v#", err)
+	}
+	var targetIP string
+	for rows.Next() {
+		err = rows.Scan(&targetIP)
+		if err != nil {
+			log.Errorf("query error: %v#", err)
+		} else {
+			d.defaultIP = targetIP
+			if strings.HasSuffix(d.defaultIP, ".") {
+				//log.Infof("blacklists:%s",d.defaultIP)
+				d.defaultIP = d.defaultIP[:len(d.defaultIP)-1]
+			}
+		}
+	}
 }
 
-func (d *NewWarnlistDB) LookupStaticAddr(addr string) []string {
+func (d *NewWarnlistDB) LookupStaticAddr(srcIP string, addr string) []net.IP {
 	//log.Infof(addr)
 
 	if addr == "" {
@@ -221,55 +265,89 @@ func (d *NewWarnlistDB) LookupStaticAddr(addr string) []string {
 		return nil
 	}
 
-	rows, err := d.db.Query("SELECT redirectDomain FROM abnormal_domain_all where IP like ?", "%"+addr+"%")
-	if err != nil {
-		log.Errorf("lookup addr error: %v#", err)
-	}
-	var blacklist []string
-	for rows.Next() {
-		var domain string
-		err = rows.Scan(&domain)
-		if err != nil {
-			log.Errorf("lookup addr error: %v#", err)
-		}
-		blacklist = append(blacklist, domain)
-	}
+	//rows, err := d.db.Query("SELECT redirectDomain FROM abnormal_domain_all where IP like ?", "%"+addr+"%")
+	//if err != nil {
+	//	log.Errorf("lookup addr error: %v#", err)
+	//}
+	//var blacklist []string
+	//for rows.Next() {
+	//	var domain string
+	//	err = rows.Scan(&domain)
+	//	if err != nil {
+	//		log.Errorf("lookup addr error: %v#", err)
+	//	}
+	//	blacklist = append(blacklist, domain)
+	//}
 	//log.Infof("a", string((len(blacklist))))
-	return removeDuplicationDomain(blacklist)
+	//removeDuplicationIP()
+	var blacklist []net.IP
+	blacklist = append(blacklist, parseIP(redirectIP))
+	return removeDuplicationIP(blacklist)
 }
 
 // lookupStaticHost looks up the IP addresses for the given host from the blacklists file.
-func (d *NewWarnlistDB) lookupStaticHost(host string, qtype uint16) []net.IP {
+func (d *NewWarnlistDB) lookupStaticHost(srcIP string, host string, qtype uint16) []net.IP {
 	if d.Len() == 0 {
 		return nil
 	}
-
-	rows, err := d.db.Query("SELECT redirectIP FROM abnormal_domain_all where abnormal_domain=? and qtype = ?", host, qtype)
-	if err != nil {
-		log.Errorf("lookup host error: %v#", err)
-	}
 	var IPs []net.IP
-	for rows.Next() {
-		var redirectIP string
-		err = rows.Scan(&redirectIP)
+	//log.Infof(srcIP)
+	if qtype == dns.TypeA {
+		rows, err := d.db.Query("SELECT black_list,white_list,block_target FROM abnormal_domain_users where ip_range like ?", "%"+srcIP+"%")
 		if err != nil {
 			log.Errorf("lookup host error: %v#", err)
 		}
-		IPs = append(IPs, parseIP(redirectIP))
+		var whitelist string
+		var blacklist string
+		var blocktarget string
+		for rows.Next() {
+			err = rows.Scan(&blacklist, &whitelist, &blocktarget)
+			if err != nil {
+				log.Errorf("lookup host error: %v#", err)
+			}
+			//log.Infof("blocktarget:%s",blocktarget)
+
+			if strings.Contains(whitelist, host[:len(host)-1]) {
+				return IPs
+			} else if strings.Contains(blacklist, host[:len(host)-1]) {
+				if strings.HasSuffix(blocktarget, ".") {
+					//log.Infof("blacklists:%s",blocktarget)
+					blocktarget = blocktarget[:len(blocktarget)-1]
+				}
+				IPs = append(IPs, parseIP(blocktarget))
+				return IPs
+			}
+		}
+	}
+
+	rows, err := d.db.Query("SELECT count(*) FROM abnormal_domain_all where abnormal_domain=? and qtype = ?", host, qtype)
+	if err != nil {
+		log.Errorf("lookup host error: %v#", err)
+	}
+	var count int
+	for rows.Next() {
+		err = rows.Scan(&count)
+		if err != nil {
+			log.Errorf("lookup host error: %v#", err)
+		}
+	}
+	if count > 0 {
+		//log.Infof("default:%s",d.defaultIP)
+		IPs = append(IPs, parseIP(d.defaultIP))
 	}
 	return removeDuplicationIP(IPs)
 }
 
-func (d *NewWarnlistDB) LookupStaticHostV4(host string) []net.IP {
+func (d *NewWarnlistDB) LookupStaticHostV4(srcIP string, host string) []net.IP {
 	host = strings.ToLower(host)
-	ip := d.lookupStaticHost(host, dns.TypeA)
+	ip := d.lookupStaticHost(srcIP, host, dns.TypeA)
 	return ip
 }
 
 // LookupStaticHostV6 looks up the IPv6 addresses for the given host from the blacklists file.
-func (d *NewWarnlistDB) LookupStaticHostV6(host string) []net.IP {
+func (d *NewWarnlistDB) LookupStaticHostV6(srcIP string, host string) []net.IP {
 	host = strings.ToLower(host)
-	ip := d.lookupStaticHost(host, dns.TypeAAAA)
+	ip := d.lookupStaticHost(srcIP, host, dns.TypeAAAA)
 	return ip
 }
 
@@ -282,7 +360,6 @@ func (m *GoMapWarnlist) Add(rr string) {
 	var domain string
 	var addr net.IP
 	var targetIP net.IP
-	var targetDomain string
 
 	if len(items) == 1 {
 		domain = items[0]
@@ -296,8 +373,7 @@ func (m *GoMapWarnlist) Add(rr string) {
 	} else {
 		domain = items[1]
 		addr = parseIP(items[0])
-		targetIP = parseIP(items[2])
-		targetDomain = items[3]
+		targetIP = parseIP(redirectIP)
 	}
 
 	if addr.To4() != nil {
@@ -306,7 +382,7 @@ func (m *GoMapWarnlist) Add(rr string) {
 		m.warnlist.name6[domain] = append(m.warnlist.name4[domain], targetIP)
 	}
 	if addr != nil {
-		m.warnlist.addr[addr.String()] = append(m.warnlist.addr[addr.String()], targetDomain)
+		m.warnlist.addr[addr.String()] = append(m.warnlist.addr[addr.String()], targetIP)
 	}
 }
 
@@ -329,18 +405,18 @@ func (m *GoMapWarnlist) Open() {
 	m.warnlist = newMap()
 }
 
-func (m *GoMapWarnlist) LookupStaticAddr(addr string) []string {
+func (m *GoMapWarnlist) LookupStaticAddr(srcIP string, addr string) []net.IP {
 	addr = parseIP(addr).String()
 	if addr == "" {
 		return nil
 	}
 
 	blacklists1 := m.warnlist.addr[addr]
-	return removeDuplicationDomain(blacklists1)
+	return removeDuplicationIP(blacklists1)
 }
 
 // lookupStaticHost looks up the IP addresses for the given host from the blacklists file.
-func (m *GoMapWarnlist) lookupStaticHost(host string, qtype uint16) []net.IP {
+func (m *GoMapWarnlist) lookupStaticHost(srcIP string, host string, qtype uint16) []net.IP {
 	if qtype == dns.TypeA && len(m.warnlist.name4) == 0 {
 		return nil
 	}
@@ -359,16 +435,16 @@ func (m *GoMapWarnlist) lookupStaticHost(host string, qtype uint16) []net.IP {
 	return ipsCp
 }
 
-func (m *GoMapWarnlist) LookupStaticHostV4(host string) []net.IP {
+func (m *GoMapWarnlist) LookupStaticHostV4(srcIP string, host string) []net.IP {
 	host = strings.ToLower(host)
-	ip := m.lookupStaticHost(host, dns.TypeA)
+	ip := m.lookupStaticHost(srcIP, host, dns.TypeA)
 	return ip
 }
 
 // LookupStaticHostV6 looks up the IPv6 addresses for the given host from the blacklists file.
-func (m *GoMapWarnlist) LookupStaticHostV6(host string) []net.IP {
+func (m *GoMapWarnlist) LookupStaticHostV6(srcIP string, host string) []net.IP {
 	host = strings.ToLower(host)
-	ip := m.lookupStaticHost(host, dns.TypeAAAA)
+	ip := m.lookupStaticHost(srcIP, host, dns.TypeAAAA)
 	return ip
 }
 
