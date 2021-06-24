@@ -291,7 +291,6 @@ func (d *NewWarnlistDB) lookupStaticHost(srcIP string, host string, qtype uint16
 		return nil
 	}
 	var IPs []net.IP
-	//log.Infof(srcIP)
 	if qtype == dns.TypeA {
 		rows, err := d.db.Query("SELECT black_list,white_list,block_target FROM abnormal_domain_users where ip_range like ?", "%"+srcIP+"%")
 		if err != nil {
@@ -307,20 +306,55 @@ func (d *NewWarnlistDB) lookupStaticHost(srcIP string, host string, qtype uint16
 			}
 			//log.Infof("blocktarget:%s",blocktarget)
 
-			if strings.Contains(whitelist, host[:len(host)-1]) {
-				return IPs
-			} else if strings.Contains(blacklist, host[:len(host)-1]) {
-				if strings.HasSuffix(blocktarget, ".") {
-					//log.Infof("blacklists:%s",blocktarget)
-					blocktarget = blocktarget[:len(blocktarget)-1]
+			domains := generateLevelDomains(host)
+			whitelists := strings.Split(whitelist, ",")
+			//log.Infof(whitelist)
+			blacklists := strings.Split(blacklist, ",")
+			//log.Infof(blacklist)
+			for i := 0; i < len(domains); i++ {
+				for j := 0; j < len(whitelists); j++ {
+					if !strings.HasSuffix(whitelists[j], ".") {
+						whitelists[j] += "."
+					}
+					if domains[i] == whitelists[j] {
+						return IPs
+					}
 				}
-				IPs = append(IPs, parseIP(blocktarget))
-				return IPs
+				for j := 0; j < len(blacklists); j++ {
+					//log.Infof("blacklists:%s",blacklists[j])
+					if !strings.HasSuffix(blacklists[j], ".") {
+						blacklists[j] += "."
+					}
+					//log.Infof("blacklists:%s",blacklists[j])
+					//log.Infof("domains:%s",domains[i])
+
+					if domains[i] == blacklists[j] {
+						if strings.HasSuffix(blocktarget, ".") {
+							//log.Infof("block:%s",blocktarget)
+							blocktarget = blocktarget[:len(blocktarget)-1]
+						}
+						IPs = append(IPs, parseIP(blocktarget))
+						return IPs
+					}
+				}
 			}
+
+			//if strings.Contains(whitelist, host[:len(host)-1]) {
+			//	return IPs
+			//} else if strings.Contains(blacklist, host[:len(host)-1]) {
+			//	if strings.HasSuffix(blocktarget, ".") {
+			//		//log.Infof("blacklists:%s",blocktarget)
+			//		blocktarget = blocktarget[:len(blocktarget)-1]
+			//	}
+			//	IPs = append(IPs, parseIP(blocktarget))
+			//	return IPs
+			//}
 		}
 	}
 
-	rows, err := d.db.Query("SELECT count(*) FROM abnormal_domain_all where abnormal_domain=? and qtype = ?", host, qtype)
+	domains := generateLevelDomains(host)
+	//log.Infof("SELECT count(*) FROM abnormal_domain_all where abnormal_domain IN ("+ toDomainString(domains) +") and qtype = ?")
+	rows, err := d.db.Query("SELECT count(*) FROM abnormal_domain_all where abnormal_domain IN ("+toDomainString(domains)+") and qtype = ?", qtype)
 	if err != nil {
 		log.Errorf("lookup host error: %v#", err)
 	}
@@ -587,4 +621,29 @@ func removeDuplicationIP(arr []net.IP) []net.IP {
 	}
 
 	return arr[:j]
+}
+
+func generateLevelDomains(host string) []string {
+	var domains []string
+	if strings.HasSuffix(host, ".") {
+		domains = strings.Split(host[:len(host)-1], ".")
+	} else {
+		domains = strings.Split(host[:len(host)-1], ".")
+	}
+	lastDomain := "."
+	for i := len(domains) - 1; i >= 0; i-- {
+		domains[i] += lastDomain
+		lastDomain = "." + domains[i]
+		//log.Infof(domains[i])
+	}
+	return domains
+}
+
+func toDomainString(domains []string) string {
+	length := len(domains)
+	domainStr := "\"" + domains[0] + "\""
+	for i := 1; i < length; i++ {
+		domainStr += "," + "\"" + domains[i] + "\""
+	}
+	return domainStr
 }
