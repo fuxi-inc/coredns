@@ -135,7 +135,7 @@ func DoTLog(w dns.ResponseWriter, msg *dns.Msg) {
 
 // Write log in DoT log file.
 func WriteDoTLog(LogItem string) error {
-	filePath := "/home/fuxi/coredns/"
+	filePath := getCurrentDirectory() + "/"
 	fileName := "coredns_dot.log"
 	lineFeed := "\r\n"
 	f, err := os.OpenFile(filePath+fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)

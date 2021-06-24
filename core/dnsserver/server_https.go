@@ -256,7 +256,7 @@ func DoHLog(dw *DoHWriter, w http.ResponseWriter, msg *dns.Msg) {
 
 // Write log in DoH log file.
 func WriteDoHLog(LogItem string) error {
-	filePath := "/home/fuxi/coredns/"
+	filePath := getCurrentDirectory() + "/"
 	fileName := "coredns_doh.log"
 	lineFeed := "\r\n"
 	f, err := os.OpenFile(filePath+fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
