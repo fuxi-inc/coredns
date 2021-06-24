@@ -1,6 +1,6 @@
 #!/bin/bash
 
-coredns_path=/home/fuxi/coredns
+coredns_path=$(cd "$(dirname "$0")"; pwd)
 
 log_date=`date -d yesterday +%Y%m%d`
 echo $log_date
