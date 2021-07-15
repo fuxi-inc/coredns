@@ -5,3 +5,8 @@ build/
 release/
 vendor/
 .idea/
+*.log
+logs
+*.db
+core/plugin/zplugin.go
+core/dnsserver/zdirectives.go
