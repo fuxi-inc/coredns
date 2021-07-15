@@ -7,3 +7,4 @@ vendor/
 .idea/
 *.log
 logs
+*.db
