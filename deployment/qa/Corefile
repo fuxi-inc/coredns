@@ -9,11 +9,7 @@
     match_subdomains false
   }
 
-<<<<<<< HEAD
   forward . 114.114.114.114
-=======
-  forward . 119.29.29.29
->>>>>>> efd8968332c77a8e6f435d251070a2bdd72ebd38
 
   cache
   reload 10s
@@ -25,17 +21,10 @@ fuxi.id:1153 tls://fuxi:1953 https://fuxi:1443 {
   bind 0.0.0.0
   tls deployment/dev/dns.heze+6.pem deployment/dev/dns.heze+6-key.pem
 
-<<<<<<< HEAD
-  forward . 172.20.64.87:1053
+  forward . peer1.magnolia.qa:1053
 
   cache
   reload
-=======
-  forward . 8.133.162.203:1053 106.15.232.63:1053
-
-  cache
-  reload 10s
->>>>>>> efd8968332c77a8e6f435d251070a2bdd72ebd38
   errors
   log
 }
