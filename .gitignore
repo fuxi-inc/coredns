@@ -5,3 +5,5 @@ build/
 release/
 vendor/
 .idea/
+*.log
+logs
