@@ -123,8 +123,8 @@ run:
 
 .PHONY:package
 package:
-	docker build -f Dockerfile -t hub.fxn.tech/coredns:$(APP_VERSION) .
+	docker build -f Dockerfile -t hub.fuxitechnology.com/coredns:$(APP_VERSION) .
 
 .PHONY:
 publish:
-	docker push hub.fxn.tech/coredns:$(APP_VERSION)
+	docker push hub.fuxitechnology.com/coredns:$(APP_VERSION)
