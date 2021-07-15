@@ -6,7 +6,6 @@ CHECKS:=check
 BUILDOPTS:=-v
 GOPATH?=$(HOME)/go
 MAKEPWD:=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
-CGO_ENABLED:=0
 
 .ONESHELL:
 APP_PROFILE ?= dev
@@ -17,6 +16,11 @@ endif
 APP_VERSION ?= dev
 ifdef $$APP_VERSION
 APP_VERSION := $$APP_VERSION
+endif
+
+CGO_ENABLED ?= 0
+ifdef $$CGO_ENABLED
+CGO_ENABLED := $$CGO_ENABLED
 endif
 
 .PHONY: all
@@ -119,8 +123,8 @@ run:
 
 .PHONY:package
 package:
-	docker build -f Dockerfile -t hub.fxn.tech/coredns:$(APP_VERSION) .
+	docker build -f Dockerfile -t hub.fuxitechnology.com/coredns:$(APP_VERSION) .
 
 .PHONY:
 publish:
-	docker push hub.fxn.tech/coredns:$(APP_VERSION)
+	docker push hub.fuxitechnology.com/coredns:$(APP_VERSION)
